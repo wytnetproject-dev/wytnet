@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50/50 text-wytnet-body font-sans antialiased overflow-x-hidden;
+    font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans font-bold text-wytnet-dark tracking-tight;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-wytnet-blue to-[#0a84ff];
+  }
+
+  .glow-blur {
+    filter: blur(100px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glassmorphism {
+    @apply bg-white/70 backdrop-blur-md border border-wytnet-border shadow-[0_8px_30px_rgb(0,0,0,0.015)];
+  }
+
+  .glassmorphism-card {
+    @apply bg-white/80 backdrop-blur-lg border border-wytnet-border shadow-[0_12px_40px_rgba(0,102,204,0.02)] hover:shadow-[0_20px_50px_rgba(0,102,204,0.06)] hover:border-wytnet-blue/20 transition-all duration-300;
+  }
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}
+
+/* Smooth custom scrolling */
+html {
+  scroll-behavior: smooth;
+}
