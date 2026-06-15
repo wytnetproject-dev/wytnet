@@ -9,6 +9,7 @@ import Orchestration from './components/Orchestration';
 import CTA from './components/CTA';
 import Footer from './components/Footer';
 import PortalLayout from './portal/PortalLayout';
+import Marketplace from './components/Marketplace';
 
 // Create premium light mode MUI Theme matching branding typography and tokens
 const theme = createTheme({
@@ -37,10 +38,12 @@ const theme = createTheme({
 
 function App() {
   const [view, setView] = useState<'landing' | 'portal'>('landing');
+  const [currentHash, setCurrentHash] = useState('');
 
   // Unified native hash-routing handler
   useEffect(() => {
     const checkHash = () => {
+      setCurrentHash(window.location.hash);
       if (window.location.hash === '#portal') {
         setView('portal');
       } else {
@@ -62,11 +65,17 @@ function App() {
         <div className="flex flex-col min-h-screen bg-[#fafbfe]/30 selection:bg-wytnet-blue/10 selection:text-wytnet-blue">
           <Header />
           <main className="flex-grow">
-            <Hero />
-            <Stats />
-            <Ecosystem />
-            <Orchestration />
-            <CTA />
+            {currentHash.startsWith('#marketplace') ? (
+              <Marketplace currentHash={currentHash} />
+            ) : (
+              <>
+                <Hero />
+                <Stats />
+                <Ecosystem />
+                <Orchestration />
+                <CTA />
+              </>
+            )}
           </main>
           <Footer />
         </div>

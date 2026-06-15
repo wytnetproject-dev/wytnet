@@ -1,9 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bell, Grid, Menu, X } from 'lucide-react';
 import { IconButton, Badge } from '@mui/material';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentHash, setCurrentHash] = useState(() => window.location.hash);
+
+  useEffect(() => {
+    const handleHash = () => {
+      setCurrentHash(window.location.hash);
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-wytnet-border bg-white/80 backdrop-blur-md">
@@ -28,16 +37,22 @@ export default function Header() {
 
         {/* Center: Desktop Navigation links */}
         <nav className="hidden md:flex items-center gap-8">
-          {['Features', 'Ecosystem', 'Marketplace', 'Developer', 'Pricing'].map((item) => (
-            <a
-              key={item}
-              href={`#${item.toLowerCase()}`}
-              className="relative text-[15px] font-medium text-wytnet-body transition-colors duration-200 hover:text-wytnet-blue group py-1.5"
-            >
-              {item}
-              <span className="absolute bottom-0 left-0 h-[2px] w-0 bg-wytnet-blue transition-all duration-300 group-hover:w-full" />
-            </a>
-          ))}
+          {['Features', 'Ecosystem', 'Marketplace'].map((item) => {
+            const itemHash = `#${item.toLowerCase()}`;
+            const isActive = currentHash === itemHash || (item === 'Features' && !currentHash);
+            return (
+              <a
+                key={item}
+                href={itemHash}
+                className={`relative text-[15px] font-medium transition-colors duration-200 group py-1.5 ${isActive ? 'text-wytnet-blue' : 'text-wytnet-body hover:text-wytnet-blue'
+                  }`}
+              >
+                {item}
+                <span className={`absolute bottom-0 left-0 h-[2px] transition-all duration-300 bg-wytnet-blue group-hover:w-full ${isActive ? 'w-full' : 'w-0'
+                  }`} />
+              </a>
+            );
+          })}
         </nav>
 
         {/* Right Side: Action Indicators & CTA */}
@@ -85,16 +100,21 @@ export default function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-wytnet-border bg-white py-4 px-6 animate-fadeIn shadow-lg absolute left-0 right-0">
           <div className="flex flex-col gap-4">
-            {['Features', 'Ecosystem', 'Marketplace', 'Developer', 'Pricing'].map((item) => (
-              <a
-                key={item}
-                href={`#${item.toLowerCase()}`}
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-[16px] font-medium text-wytnet-body hover:text-wytnet-blue py-2 border-b border-slate-50 transition-colors"
-              >
-                {item}
-              </a>
-            ))}
+            {['Features', 'Ecosystem', 'Marketplace', 'Developer', 'Pricing'].map((item) => {
+              const itemHash = `#${item.toLowerCase()}`;
+              const isActive = currentHash === itemHash || (item === 'Features' && !currentHash);
+              return (
+                <a
+                  key={item}
+                  href={itemHash}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`text-[16px] font-medium py-2 border-b border-slate-50 transition-colors ${isActive ? 'text-wytnet-blue' : 'text-wytnet-body hover:text-wytnet-blue'
+                    }`}
+                >
+                  {item}
+                </a>
+              );
+            })}
             <div className="flex flex-col gap-2 pt-2">
               <a
                 href="#portal"
