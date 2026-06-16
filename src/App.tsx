@@ -1,15 +1,9 @@
 import { useState, useEffect } from 'react';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import Header from './components/Header';
-import Hero from './components/Hero';
-import Stats from './components/Stats';
-import Ecosystem from './components/Ecosystem';
-import Orchestration from './components/Orchestration';
-import CTA from './components/CTA';
-import Footer from './components/Footer';
-import PortalLayout from './portal/PortalLayout';
-import Marketplace from './components/Marketplace';
+import LandingPage from '@/pages/LandingPage';
+import MarketplacePage from '@/pages/MarketplacePage';
+import PortalPage from '@/pages/PortalPage';
 
 // Create premium light mode MUI Theme matching branding typography and tokens
 const theme = createTheme({
@@ -60,25 +54,11 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       {view === 'portal' ? (
-        <PortalLayout />
+        <PortalPage />
+      ) : currentHash.startsWith('#marketplace') ? (
+        <MarketplacePage currentHash={currentHash} />
       ) : (
-        <div className="flex flex-col min-h-screen bg-[#fafbfe]/30 selection:bg-wytnet-blue/10 selection:text-wytnet-blue">
-          <Header />
-          <main className="flex-grow">
-            {currentHash.startsWith('#marketplace') ? (
-              <Marketplace currentHash={currentHash} />
-            ) : (
-              <>
-                <Hero />
-                <Stats />
-                <Ecosystem />
-                <Orchestration />
-                <CTA />
-              </>
-            )}
-          </main>
-          <Footer />
-        </div>
+        <LandingPage />
       )}
     </ThemeProvider>
   );
