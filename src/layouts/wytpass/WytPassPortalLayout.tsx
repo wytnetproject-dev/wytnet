@@ -1,11 +1,11 @@
 import { useState } from 'react';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Sidebar from '@/layouts/wytpass/SidebarPass';
 import Topbar from '@/layouts/wytpass/TopbarPass';
-
 import LoginModalPass from '@/custom-pages/login/LoginModalPass';
 import WytPassDashboard from '@/custom-pages/wytpass-dashboard/WytPassDashboard';
 import BrandsCRUD from '@/custom-pages/brand/BrandsCRUD';
-
 
 interface ProductLayoutProps {
   onSelectProduct: (product: string) => void;
@@ -40,7 +40,17 @@ export default function WytPassPortalLayout({ onSelectProduct }: ProductLayoutPr
   };
 
   return (
-    <div className="flex h-screen w-screen bg-[#f8fafc] overflow-hidden text-slate-600 font-sans relative">
+    <Box
+      sx={{
+        display: 'flex',
+        height: '100vh',
+        width: '100vw',
+        backgroundColor: '#f8fafc',
+        overflow: 'hidden',
+        color: '#475569',
+        position: 'relative',
+      }}
+    >
       {user ? (
         <>
           {user.role === 'developer' && (
@@ -55,7 +65,7 @@ export default function WytPassPortalLayout({ onSelectProduct }: ProductLayoutPr
             />
           )}
 
-          <div className="flex flex-col flex-grow overflow-hidden h-full">
+          <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, overflow: 'hidden', height: '100%' }}>
             <Topbar
               user={user}
               onLogout={handleLogout}
@@ -63,32 +73,67 @@ export default function WytPassPortalLayout({ onSelectProduct }: ProductLayoutPr
               onSelectProduct={onSelectProduct}
             />
 
-            <div className="flex-grow flex flex-col overflow-hidden relative">
+            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
               {activeMenu === 'brand' ? (
                 <BrandsCRUD user={user} portalType="wytpass" />
               ) : (
                 <WytPassDashboard user={user} />
               )}
-            </div>
-          </div>
+            </Box>
+          </Box>
         </>
       ) : (
-        <div className="h-full w-full flex flex-col items-center justify-center p-8 bg-[#f8fafc] relative overflow-hidden">
+        <Box sx={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 4, backgroundColor: '#f8fafc', position: 'relative', overflow: 'hidden' }}>
           {/* Elegant Product selector tabs */}
-          <div className="flex gap-2 p-1.5 bg-slate-100/80 backdrop-blur-sm border border-slate-200/50 rounded-2xl mb-6 relative z-10 shadow-sm animate-fadeIn">
-            <button
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 1,
+              p: 0.75,
+              backgroundColor: 'rgba(241, 245, 249, 0.8)',
+              backdropFilter: 'blur(4px)',
+              border: '1px solid rgba(226, 232, 240, 0.5)',
+              borderRadius: '16px',
+              mb: 3,
+              position: 'relative',
+              zIndex: 10,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+            }}
+            className="animate-fadeIn"
+          >
+            <Button
               onClick={() => onSelectProduct('wytsaas')}
-              className="text-xs font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer text-slate-500 hover:text-wytnet-dark"
+              sx={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                px: 2.5,
+                py: 1,
+                borderRadius: '12px',
+                textTransform: 'none',
+                color: '#64748b',
+                '&:hover': { color: '#0f172a', backgroundColor: 'rgba(0,0,0,0.02)' },
+              }}
             >
               WytSaaS Login
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => onSelectProduct('wytpass')}
-              className="text-xs font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer bg-purple-600 text-white shadow-md"
+              variant="contained"
+              sx={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                px: 2.5,
+                py: 1,
+                borderRadius: '12px',
+                textTransform: 'none',
+                backgroundColor: '#9333ea',
+                '&:hover': { backgroundColor: '#7e22ce' },
+                boxShadow: '0 4px 6px -1px rgb(147 51 234 / 0.1)',
+              }}
             >
               WytPass Login
-            </button>
-          </div>
+            </Button>
+          </Box>
 
           <LoginModalPass
             isOpen={true}
@@ -96,8 +141,8 @@ export default function WytPassPortalLayout({ onSelectProduct }: ProductLayoutPr
             onLoginSuccess={handleLoginSuccess}
             isEmbedded={true}
           />
-        </div>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }

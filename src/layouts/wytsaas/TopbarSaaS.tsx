@@ -1,5 +1,12 @@
 import { useState } from 'react';
 import { Search, LogIn, LogOut, User } from 'lucide-react';
+import Box from '@mui/material/Box';
+import Avatar from '@mui/material/Avatar';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import Typography from '@mui/material/Typography';
+import Divider from '@mui/material/Divider';
+import Button from '@mui/material/Button';
 
 interface TopbarProps {
   user: { email: string; name: string } | null;
@@ -9,13 +16,36 @@ interface TopbarProps {
 }
 
 export default function TopbarSaaS({ user, onLogout, onLoginClick, onMyAccountClick }: TopbarProps) {
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  const handleProfileClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0 z-10 select-none">
-
+    <Box
+      component="header"
+      sx={{
+        height: 64,
+        backgroundColor: '#ffffff',
+        borderBottom: '1px solid #f1f5f9',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'between',
+        px: 3,
+        flexShrink: 0,
+        zIndex: 10,
+        userSelect: 'none',
+      }}
+      className="justify-between"
+    >
       {/* Left side Search Input */}
-      <div className="flex-grow max-w-md">
+      <Box sx={{ flexGrow: 1, maxWidth: 448 }}>
         <div className="relative group">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-wytnet-blue transition-colors">
             <Search className="h-4 w-4" />
@@ -29,75 +59,123 @@ export default function TopbarSaaS({ user, onLogout, onLoginClick, onMyAccountCl
             <span className="bg-white border border-slate-100 px-1.5 py-0.5 rounded shadow-sm">⌘ K</span>
           </div>
         </div>
-      </div>
+      </Box>
 
       {/* Right side Context details & Controls */}
-      <div className="flex items-center gap-4">
-
-
-
-        {/* User initials Avatar or Log In button */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         {user ? (
-          <div className="relative">
-            <div
-              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-              className="h-8 w-8 rounded-full bg-wytnet-blue hover:bg-blue-600 transition-colors text-white font-extrabold text-xs flex items-center justify-center cursor-pointer shadow-sm select-none"
+          <Box>
+            <Avatar
+              onClick={handleProfileClick}
+              sx={{
+                width: 32,
+                height: 32,
+                bgcolor: 'primary.main',
+                '&:hover': { bgcolor: '#0052a3' },
+                fontSize: '0.75rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                transition: 'background-color 0.2s',
+              }}
             >
               {user.name.slice(0, 2).toUpperCase()}
-            </div>
+            </Avatar>
 
-            {/* Dropdown Menu */}
-            {isProfileMenuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-20"
-                  onClick={() => setIsProfileMenuOpen(false)}
-                />
-                <div className="absolute right-0 mt-2.5 w-56 origin-top-right rounded-2xl border border-slate-100 bg-white p-2 shadow-xl ring-1 ring-black/5 focus:outline-none z-30 animate-fadeIn">
-                  <div className="px-3.5 py-2.5 border-b border-slate-50">
-                    <p className="text-xs font-extrabold text-wytnet-dark truncate">
-                      {user.name}
-                    </p>
-                    <p className="text-[10px] font-semibold text-slate-400 truncate mt-0.5">
-                      {user.email}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      onMyAccountClick();
-                      setIsProfileMenuOpen(false);
-                    }}
-                    className="w-full text-left flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer mt-1"
-                  >
-                    <User className="h-4 w-4" />
-                    <span>My Account</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      onLogout();
-                      setIsProfileMenuOpen(false);
-                    }}
-                    className="w-full text-left flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer mt-1"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    <span>Log Out</span>
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+            <Menu
+              anchorEl={anchorEl}
+              open={open}
+              onClose={handleClose}
+              onClick={handleClose}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              slotProps={{
+                paper: {
+                  elevation: 0,
+                  sx: {
+                    overflow: 'visible',
+                    filter: 'drop-shadow(0px 10px 15px rgba(0,0,0,0.1))',
+                    border: '1px solid #f1f5f9',
+                    mt: 1,
+                    borderRadius: '16px',
+                    minWidth: 220,
+                    p: 0.5,
+                  },
+                }
+              }}
+            >
+              <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #f8fafc' }}>
+                <Typography variant="body2" sx={{ fontWeight: 800, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {user.name}
+                </Typography>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', mt: 0.5 }}>
+                  {user.email}
+                </Typography>
+              </Box>
+              <MenuItem
+                onClick={() => {
+                  onMyAccountClick();
+                  handleClose();
+                }}
+                sx={{
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  color: '#475569',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  my: 0.5,
+                  py: 1,
+                  '&:hover': { backgroundColor: '#f8fafc' }
+                }}
+              >
+                <User className="h-4 w-4 text-slate-500" />
+                <span>My Account</span>
+              </MenuItem>
+              <Divider sx={{ my: '2px', borderColor: '#f8fafc' }} />
+              <MenuItem
+                onClick={() => {
+                  onLogout();
+                  handleClose();
+                }}
+                sx={{
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  color: '#e11d48',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  my: 0.5,
+                  py: 1,
+                  '&:hover': { backgroundColor: '#fff1f2' }
+                }}
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Log Out</span>
+              </MenuItem>
+            </Menu>
+          </Box>
         ) : (
-          <button
+          <Button
             onClick={onLoginClick}
-            className="flex items-center gap-2 bg-wytnet-blue hover:bg-blue-600 transition-all text-xs font-bold text-white px-5 py-2.5 rounded-full shadow-md hover:shadow-lg cursor-pointer animate-fadeIn"
+            variant="contained"
+            startIcon={<LogIn className="h-4 w-4" />}
+            sx={{
+              borderRadius: '9999px',
+              textTransform: 'none',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              px: 2.5,
+              py: 1,
+              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+            }}
           >
-            <LogIn className="h-4 w-4" />
-            <span>Log In</span>
-          </button>
+            Log In
+          </Button>
         )}
-
-      </div>
-
-    </header>
+      </Box>
+    </Box>
   );
 }
