@@ -50,7 +50,7 @@ export interface Brand {
   full_description: string | null;
   logo_url: string | null;
   banner_url: string | null;
-  brand_type: string | null;
+  brand_type: string[] | string | null;
   company_name: string | null;
   is_wytpass_integration_accepted: boolean;
   is_payment_integration_accepted: boolean;
@@ -75,7 +75,7 @@ export interface BrandCreateInput {
   full_description?: string | null;
   logo_url?: string | null;
   banner_url?: string | null;
-  brand_type?: string | null;
+  brand_type?: string[] | string | null;
   company_name?: string | null;
   is_wytpass_integration_accepted?: boolean;
   is_payment_integration_accepted?: boolean;
@@ -94,7 +94,7 @@ export interface BrandUpdateInput {
   full_description?: string | null;
   logo_url?: string | null;
   banner_url?: string | null;
-  brand_type?: string | null;
+  brand_type?: string[] | string | null;
   company_name?: string | null;
   is_wytpass_integration_accepted?: boolean;
   is_payment_integration_accepted?: boolean;

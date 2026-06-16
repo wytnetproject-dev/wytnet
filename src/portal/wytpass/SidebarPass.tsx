@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, ChevronRight, Palette, Images, KeyRound } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Palette } from 'lucide-react';
 import logoSm from '../../assets/logosm.png';
 
 interface SidebarProps {
@@ -29,9 +29,7 @@ export default function SidebarPass({
 }: SidebarProps) {
   const primaryMenuItems: MenuItem[] = [
     ...(userRole === 'developer' ? [
-      { id: 'brand', label: 'Apps', icon: Palette },
-      { id: 'brand-assets', label: 'App Assets', icon: Images },
-      { id: 'sso-integration', label: 'SSO Integration', icon: KeyRound }
+      { id: 'brand', label: 'Apps', icon: Palette }
     ] : []),
   ];
 

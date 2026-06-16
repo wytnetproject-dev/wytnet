@@ -26,6 +26,7 @@ interface SubscriptionDialogProps {
   brands: Brand[];
   primaryColor: string;
   primaryHoverColor: string;
+  brandId?: number;
 }
 
 export default function SubscriptionDialog({
@@ -35,7 +36,8 @@ export default function SubscriptionDialog({
   editingPlan,
   brands,
   primaryColor,
-  primaryHoverColor
+  primaryHoverColor,
+  brandId
 }: SubscriptionDialogProps) {
   // Local form states
   const [formBrandId, setFormBrandId] = useState('');
@@ -64,7 +66,7 @@ export default function SubscriptionDialog({
         setFormExternalPlanId(editingPlan.external_plan_id || '');
         setFormStatus(editingPlan.status);
       } else {
-        setFormBrandId(brands.length > 0 ? brands[0].id.toString() : '');
+        setFormBrandId(brandId ? brandId.toString() : (brands.length > 0 ? brands[0].id.toString() : ''));
         setFormName('');
         setFormDescription('');
         setFormPrice('');
@@ -74,7 +76,7 @@ export default function SubscriptionDialog({
         setFormStatus('active');
       }
     }
-  }, [isOpen, editingPlan, brands]);
+  }, [isOpen, editingPlan, brands, brandId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +96,7 @@ export default function SubscriptionDialog({
       return;
     }
 
-    const brandId = parseInt(formBrandId, 10);
+    const brandIdVal = parseInt(formBrandId, 10);
     const featuresArray = formFeatures
       ? formFeatures.split(',').map(f => f.trim()).filter(f => f.length > 0)
       : [];
@@ -111,7 +113,7 @@ export default function SubscriptionDialog({
 
     setIsSubmitting(true);
     try {
-      await onSubmit(payload, brandId);
+      await onSubmit(payload, brandIdVal);
       onClose();
     } catch (err: any) {
       setLocalError(err.message || 'An error occurred while saving the plan.');
@@ -156,7 +158,7 @@ export default function SubscriptionDialog({
                 value={formBrandId}
                 onChange={(e) => setFormBrandId(e.target.value)}
                 sx={{ borderRadius: '12px', fontSize: '12px', fontWeight: 'semibold' }}
-                disabled={!!editingPlan} // Can't change brand after creation to avoid constraint bugs
+                disabled={!!editingPlan || !!brandId} // Can't change brand after creation or if pre-locked to avoid constraint bugs
               >
                 {brands.map(b => (
                   <MenuItem key={b.id} value={b.id.toString()} sx={{ fontSize: '12px', fontWeight: 'bold' }}>

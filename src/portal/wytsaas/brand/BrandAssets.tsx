@@ -12,11 +12,6 @@ import {
   Alert,
   IconButton,
   Divider,
-  List,
-  ListItemButton,
-  ListItemText,
-  ListItemAvatar,
-  Avatar,
   FormControl,
   InputLabel,
   Card,
@@ -24,13 +19,12 @@ import {
   CardActions
 } from '@mui/material';
 import {
-  Search,
   Plus,
   Trash2,
   Save,
   RefreshCw,
-  ArrowUp,
-  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
   Images,
   Image as ImageIcon,
   Video,
@@ -41,25 +35,25 @@ import {
 } from 'lucide-react';
 import type { Brand, BrandMedia } from '../api/brand';
 import { fetchBrands, updateBrand } from '../api/brand';
+import ImageUploader from './ImageUploader';
 
 interface BrandAssetsProps {
   user?: { email: string; name: string; role: string } | null;
   portalType: 'wytsaas' | 'wytpass';
+  brandId?: number;
+  isEmbedded?: boolean;
 }
 
 const DEFAULT_MOCK_BRANDS: Brand[] = [];
 
-export default function BrandAssets({ user, portalType }: BrandAssetsProps) {
+export default function BrandAssets({ user: _user, portalType, brandId, isEmbedded }: BrandAssetsProps) {
   // Theme styling depending on portalType
   const primaryColor = portalType === 'wytsaas' ? '#0066cc' : '#9333ea';
   const primaryHoverColor = portalType === 'wytsaas' ? '#0052a3' : '#7e22ce';
   const selectionBgColor = portalType === 'wytsaas' ? '#eff6ff' : '#faf5ff';
-  const selectionBorderColor = portalType === 'wytsaas' ? '#bfdbfe' : '#e9d5ff';
 
   // State
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [filteredBrands, setFilteredBrands] = useState<Brand[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSandbox, setIsSandbox] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
@@ -96,15 +90,18 @@ export default function BrandAssets({ user, portalType }: BrandAssetsProps) {
       setBrands(fetched);
       setIsSandbox(false);
       
-      // Update selected brand reference if one was previously selected
-      if (selectedBrand) {
-        const updatedSelected = fetched.find(b => b.id === selectedBrand.id);
-        if (updatedSelected) {
-          setSelectedBrand(updatedSelected);
-          setCurrentMedia(updatedSelected.media || []);
-          setHasChanges(false);
+      if (brandId) {
+        const b = fetched.find(item => item.id === brandId);
+        if (b) {
+          setSelectedBrand(b);
+          setCurrentMedia(b.media || []);
         }
+      } else if (fetched.length > 0) {
+        const defaultBrand = selectedBrand ? (fetched.find(b => b.id === selectedBrand.id) || fetched[0]) : fetched[0];
+        setSelectedBrand(defaultBrand);
+        setCurrentMedia(defaultBrand.media || []);
       }
+      setHasChanges(false);
     } catch (err) {
       console.warn('FastAPI backend connection failed. Enabling mock fallback sandbox.', err);
       const stored = localStorage.getItem('mock_brands');
@@ -113,14 +110,18 @@ export default function BrandAssets({ user, portalType }: BrandAssetsProps) {
       setIsSandbox(true);
       showToast('FastAPI server offline. Switched to Mock Sandbox Mode.', 'warning');
       
-      if (selectedBrand) {
-        const updatedSelected = initial.find((b: Brand) => b.id === selectedBrand.id);
-        if (updatedSelected) {
-          setSelectedBrand(updatedSelected);
-          setCurrentMedia(updatedSelected.media || []);
-          setHasChanges(false);
+      if (brandId) {
+        const b = initial.find((item: Brand) => item.id === brandId);
+        if (b) {
+          setSelectedBrand(b);
+          setCurrentMedia(b.media || []);
         }
+      } else if (initial.length > 0) {
+        const defaultBrand = selectedBrand ? (initial.find((b: Brand) => b.id === selectedBrand.id) || initial[0]) : initial[0];
+        setSelectedBrand(defaultBrand);
+        setCurrentMedia(defaultBrand.media || []);
       }
+      setHasChanges(false);
     } finally {
       setIsLoading(false);
     }
@@ -130,33 +131,18 @@ export default function BrandAssets({ user, portalType }: BrandAssetsProps) {
     loadBrands();
   }, []);
 
-  // Filter list when search or brands updates
   useEffect(() => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) {
-      setFilteredBrands(brands);
-    } else {
-      setFilteredBrands(
-        brands.filter(
-          (b) =>
-            b.name.toLowerCase().includes(q) ||
-            b.slug.toLowerCase().includes(q) ||
-            (b.company_name && b.company_name.toLowerCase().includes(q))
-        )
-      );
+    if (brandId && brands.length > 0) {
+      const b = brands.find(item => item.id === brandId);
+      if (b) {
+        setSelectedBrand(b);
+        setCurrentMedia(b.media || []);
+        setHasChanges(false);
+      }
     }
-  }, [searchQuery, brands]);
+  }, [brandId, brands]);
 
-  // Handle selecting a brand
-  const handleSelectBrand = (brand: Brand) => {
-    setSelectedBrand(brand);
-    setCurrentMedia(brand.media || []);
-    setHasChanges(false);
-    // Reset form
-    setNewUrl('');
-    setNewSortOrder('');
-    setNewType('image');
-  };
+
 
   // Add new asset to dynamic list
   const handleAddAsset = () => {
@@ -168,6 +154,23 @@ export default function BrandAssets({ user, portalType }: BrandAssetsProps) {
     const newAsset: BrandMedia = {
       media_type: newType,
       media_url: newUrl.trim(),
+      sort_order: order
+    };
+    
+    const updated = [...currentMedia, newAsset].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    setCurrentMedia(updated);
+    setHasChanges(true);
+    setNewUrl('');
+    setNewSortOrder('');
+  };
+
+  // Automatically add screenshot to gallery list on upload success
+  const handleUploadSuccess = (uploadedUrl: string) => {
+    if (!uploadedUrl) return;
+    const order = newSortOrder ? parseInt(newSortOrder) : currentMedia.length + 1;
+    const newAsset: BrandMedia = {
+      media_type: 'image',
+      media_url: uploadedUrl,
       sort_order: order
     };
     
@@ -287,7 +290,7 @@ export default function BrandAssets({ user, portalType }: BrandAssetsProps) {
   };
 
   return (
-    <Box className="flex-grow bg-[#f8fafc] overflow-hidden flex flex-col px-8 py-6 select-none space-y-6 h-full">
+    <Box className={`flex flex-col select-none ${isEmbedded ? 'bg-transparent px-0 py-0 space-y-4' : 'bg-[#f8fafc] px-8 py-6 space-y-6 flex-grow overflow-hidden h-full'}`}>
       {/* Toast notifications */}
       <Snackbar
         open={toastOpen}
@@ -301,77 +304,79 @@ export default function BrandAssets({ user, portalType }: BrandAssetsProps) {
       </Snackbar>
 
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
-        <div>
-          <div className="text-[10px] font-bold text-slate-400 tracking-wider uppercase flex items-center gap-1.5">
-            Products / {portalType === 'wytsaas' ? 'WytSaaS' : 'WytPass'} / Assets / <Images className="h-3 w-3 inline" /> Developer
+      {!isEmbedded && (
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
+          <div>
+            <div className="text-[10px] font-bold text-slate-400 tracking-wider uppercase flex items-center gap-1.5">
+              Products / {portalType === 'wytsaas' ? 'WytSaaS' : 'WytPass'} / Assets / <Images className="h-3 w-3 inline" /> Developer
+            </div>
+            
+            <div className="flex items-center gap-3 mt-1">
+              <h2 className="text-2xl font-extrabold text-wytnet-dark">
+                App Assets Manager
+              </h2>
+              {isSandbox ? (
+                <Chip
+                  icon={<WifiOff className="h-3 w-3" style={{ color: '#d97706' }} />}
+                  label="SANDBOX MODE"
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    borderColor: '#fef3c7',
+                    bgcolor: '#fffbeb',
+                    color: '#b45309',
+                    fontWeight: 'bold',
+                    fontSize: '10px'
+                  }}
+                />
+              ) : (
+                <Chip
+                  icon={<Check className="h-3.5 w-3.5" style={{ color: '#059669' }} />}
+                  label="CONNECTED TO API"
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    borderColor: '#d1fae5',
+                    bgcolor: '#ecfdf5',
+                    color: '#047857',
+                    fontWeight: 'bold',
+                    fontSize: '10px'
+                  }}
+                />
+              )}
+            </div>
+            <p className="text-xs font-semibold text-slate-500 mt-1">
+              Upload screenshots, showcase banners, and video demos for app profile catalog displays.
+            </p>
           </div>
-          
-          <div className="flex items-center gap-3 mt-1">
-            <h2 className="text-2xl font-extrabold text-wytnet-dark">
-              App Assets Manager
-            </h2>
-            {isSandbox ? (
-              <Chip
-                icon={<WifiOff className="h-3 w-3" style={{ color: '#d97706' }} />}
-                label="SANDBOX MODE"
-                variant="outlined"
-                size="small"
-                sx={{
-                  borderColor: '#fef3c7',
-                  bgcolor: '#fffbeb',
-                  color: '#b45309',
-                  fontWeight: 'bold',
-                  fontSize: '10px'
-                }}
-              />
-            ) : (
-              <Chip
-                icon={<Check className="h-3.5 w-3.5" style={{ color: '#059669' }} />}
-                label="CONNECTED TO API"
-                variant="outlined"
-                size="small"
-                sx={{
-                  borderColor: '#d1fae5',
-                  bgcolor: '#ecfdf5',
-                  color: '#047857',
-                  fontWeight: 'bold',
-                  fontSize: '10px'
-                }}
-              />
-            )}
-          </div>
-          <p className="text-xs font-semibold text-slate-500 mt-1">
-            Upload screenshots, showcase banners, and video demos for app profile catalog displays.
-          </p>
-        </div>
 
-        <div>
-          <Button
-            variant="outlined"
-            size="medium"
-            onClick={loadBrands}
-            sx={{
-              borderColor: '#e2e8f0',
-              color: '#475569',
-              borderRadius: '12px',
-              textTransform: 'none',
-              fontWeight: 'bold',
-              bgcolor: 'white',
-              '&:hover': {
-                borderColor: '#cbd5e1',
-                bgcolor: '#f8fafc',
-              }
-            }}
-            startIcon={<RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />}
-          >
-            Sync Registry
-          </Button>
+          <div>
+            <Button
+              variant="outlined"
+              size="medium"
+              onClick={loadBrands}
+              sx={{
+                borderColor: '#e2e8f0',
+                color: '#475569',
+                borderRadius: '12px',
+                textTransform: 'none',
+                fontWeight: 'bold',
+                bgcolor: 'white',
+                '&:hover': {
+                  borderColor: '#cbd5e1',
+                  bgcolor: '#f8fafc',
+                }
+              }}
+              startIcon={<RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />}
+            >
+              Sync Registry
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Connection Offline Status Indicator */}
-      {isSandbox && (
+      {isSandbox && !isEmbedded && (
         <Alert
           severity="info"
           icon={<WifiOff className="h-4.5 w-4.5" />}
@@ -392,114 +397,20 @@ export default function BrandAssets({ user, portalType }: BrandAssetsProps) {
         </Alert>
       )}
 
-      {/* Main Split Interface Area */}
-      <Box sx={{ display: 'flex', gap: 3, flexGrow: 1, minHeight: 0, overflow: 'hidden' }}>
-        {/* Left column: Brands List Sidebar */}
-        <Paper
-          elevation={0}
-          sx={{
-            width: 280,
-            borderRadius: '20px',
-            border: '1px solid #f1f5f9',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.005)'
-          }}
-        >
-          {/* Sidebar search box */}
-          <Box sx={{ p: 2, borderBottom: '1px solid #f8fafc' }}>
-            <Box className="relative">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search registry..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-slate-100 hover:border-slate-200 focus:border-slate-300 text-xs font-semibold pl-9 pr-3 py-2.5 rounded-xl outline-none transition-all placeholder-slate-400 text-wytnet-dark"
-              />
-            </Box>
-          </Box>
-
-          {/* Brands scroll list */}
-          <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 1 }}>
-            <List disablePadding>
-              {filteredBrands.map((b) => {
-                const isSelected = selectedBrand?.id === b.id;
-                return (
-                  <ListItemButton
-                    key={b.id}
-                    onClick={() => handleSelectBrand(b)}
-                    sx={{
-                      borderRadius: '12px',
-                      mb: 0.5,
-                      border: isSelected ? `1px solid ${selectionBorderColor}` : '1px solid transparent',
-                      bgcolor: isSelected ? selectionBgColor : 'transparent',
-                      '&:hover': {
-                        bgcolor: isSelected ? selectionBgColor : '#f8fafc'
-                      }
-                    }}
-                  >
-                    <ListItemAvatar sx={{ minWidth: 44 }}>
-                      {b.logo_url ? (
-                        <Avatar
-                          src={b.logo_url}
-                          alt={b.name}
-                          variant="rounded"
-                          sx={{ width: 32, height: 32, border: '1px solid #f1f5f9' }}
-                        />
-                      ) : (
-                        <Avatar
-                          variant="rounded"
-                          sx={{
-                            width: 32,
-                            height: 32,
-                            bgcolor: primaryColor,
-                            fontWeight: 'black',
-                            fontSize: '12px'
-                          }}
-                        >
-                          {b.name.charAt(0).toUpperCase()}
-                        </Avatar>
-                      )}
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '12px', color: '#1e293b' }}>
-                          {b.name}
-                        </Typography>
-                      }
-                      secondary={
-                        <Typography sx={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace' }}>
-                          /{b.slug}
-                        </Typography>
-                      }
-                    />
-                  </ListItemButton>
-                );
-              })}
-
-              {filteredBrands.length === 0 && (
-                <Typography sx={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', mt: 4, fontWeight: '600' }}>
-                  No Apps Registered
-                </Typography>
-              )}
-            </List>
-          </Box>
-        </Paper>
-
-        {/* Right column: Selected Brand assets editor */}
+      {/* Main Interface Area (No Sidebar) */}
+      <Box sx={{ display: 'flex', flexGrow: 1, minHeight: 0, overflow: 'hidden' }}>
+        {/* Main assets editor */}
         <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           {selectedBrand ? (
             <Paper
               elevation={0}
               sx={{
-                flexGrow: 1,
+                flexGrow: isEmbedded ? 0 : 1,
                 borderRadius: '20px',
                 border: '1px solid #f1f5f9',
                 display: 'flex',
                 flexDirection: 'column',
-                overflow: 'hidden',
+                overflow: isEmbedded ? 'visible' : 'hidden',
                 boxShadow: '0 4px 20px rgba(0, 0, 0, 0.005)'
               }}
             >
@@ -526,77 +437,43 @@ export default function BrandAssets({ user, portalType }: BrandAssetsProps) {
               </Box>
 
               {/* Form & List Workspace Scroll Area */}
-              <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 3, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <Box sx={{ flexGrow: isEmbedded ? 0 : 1, overflowY: isEmbedded ? 'visible' : 'auto', p: 3, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {/* 1. Add Asset input section */}
                 <Box>
                   <Typography sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', mb: 2, textTransform: 'uppercase' }}>
                     Add Showcase Asset
                   </Typography>
                   
-                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <FormControl sx={{ minWidth: 120 }} size="small">
-                      <InputLabel id="asset-type-label" sx={{ fontSize: '12px', fontWeight: '600' }}>Asset Type</InputLabel>
-                      <Select
-                        labelId="asset-type-label"
-                        label="Asset Type"
-                        value={newType}
-                        onChange={(e) => setNewType(e.target.value)}
-                        sx={{ borderRadius: '10px', fontSize: '12px' }}
-                      >
-                        <MenuItem value="image">Screenshot Image</MenuItem>
-                        <MenuItem value="video">Promotional Video</MenuItem>
-                      </Select>
-                    </FormControl>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <TextField
+                        label="Sort Order"
+                        placeholder="e.g. 1"
+                        size="small"
+                        type="number"
+                        value={newSortOrder}
+                        onChange={(e) => setNewSortOrder(e.target.value)}
+                        sx={{ width: 100 }}
+                        slotProps={{
+                          inputLabel: { style: { fontSize: '12px', fontWeight: '600' } },
+                          input: { style: { borderRadius: '10px', fontSize: '12px' } }
+                        }}
+                      />
+                      <Typography sx={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>
+                        (Optional) Specify order before uploading. Automatically appends if left blank.
+                      </Typography>
+                    </Box>
 
-                    <TextField
-                      label="Media Resource URL"
-                      placeholder="https://example.com/screenshot.png"
-                      size="small"
-                      fullWidth
-                      value={newUrl}
-                      onChange={(e) => setNewUrl(e.target.value)}
-                      sx={{ flexGrow: 1 }}
-                      slotProps={{
-                        inputLabel: { style: { fontSize: '12px', fontWeight: '600' } },
-                        input: { style: { borderRadius: '10px', fontSize: '12px' } }
-                      }}
-                    />
-
-                    <TextField
-                      label="Sort Order"
-                      placeholder="e.g. 1"
-                      size="small"
-                      type="number"
-                      value={newSortOrder}
-                      onChange={(e) => setNewSortOrder(e.target.value)}
-                      sx={{ width: 100 }}
-                      slotProps={{
-                        inputLabel: { style: { fontSize: '12px', fontWeight: '600' } },
-                        input: { style: { borderRadius: '10px', fontSize: '12px' } }
-                      }}
-                    />
-
-                    <Button
-                      variant="contained"
-                      onClick={handleAddAsset}
-                      sx={{
-                        bgcolor: primaryColor,
-                        color: 'white',
-                        borderRadius: '10px',
-                        textTransform: 'none',
-                        fontWeight: 'bold',
-                        boxShadow: 'none',
-                        px: 3,
-                        py: 1,
-                        '&:hover': {
-                          bgcolor: primaryHoverColor,
-                          boxShadow: 'none'
-                        }
-                      }}
-                      startIcon={<Plus className="h-4 w-4" />}
-                    >
-                      Add
-                    </Button>
+                    <Box sx={{ maxWidth: '100%' }}>
+                      <ImageUploader
+                        label="Upload Screenshot Image File"
+                        value={newUrl}
+                        onChange={handleUploadSuccess}
+                        primaryColor={primaryColor}
+                        autoResetAfterUpload={true}
+                        isSandbox={isSandbox}
+                      />
+                    </Box>
                   </Box>
                 </Box>
 
@@ -619,7 +496,18 @@ export default function BrandAssets({ user, portalType }: BrandAssetsProps) {
                       </Typography>
                     </Box>
                   ) : (
-                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 2.5 }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        gap: 2,
+                        overflowX: 'auto',
+                        pb: 2,
+                        pt: 1,
+                        '::-webkit-scrollbar': { display: 'none' },
+                        msOverflowStyle: 'none',
+                        scrollbarWidth: 'none'
+                      }}
+                    >
                       {currentMedia.map((item, idx) => {
                         const isImage = item.media_type === 'image';
                         return (
@@ -627,34 +515,38 @@ export default function BrandAssets({ user, portalType }: BrandAssetsProps) {
                             key={idx}
                             elevation={0}
                             sx={{
+                              width: 140,
+                              height: 250,
+                              flexShrink: 0,
                               border: '1px solid #e2e8f0',
                               borderRadius: '16px',
                               overflow: 'hidden',
                               display: 'flex',
                               flexDirection: 'column',
-                              transition: 'transform 0.15s, border-color 0.15s',
+                              transition: 'transform 0.15s, border-color 0.15s, box-shadow 0.15s',
                               '&:hover': {
-                                transform: 'translateY(-2px)',
-                                borderColor: '#cbd5e1'
+                                transform: 'translateY(-4px)',
+                                borderColor: '#cbd5e1',
+                                boxShadow: '0 6px 16px rgba(0,0,0,0.06)'
                               }
                             }}
                           >
                             {/* Card Media Preview */}
-                            <Box sx={{ position: 'relative', height: 120, bgcolor: '#f1f5f9' }}>
+                            <Box sx={{ position: 'relative', flexGrow: 1, bgcolor: '#f1f5f9', overflow: 'hidden' }}>
                               {isImage ? (
                                 <CardMedia
                                   component="img"
                                   image={item.media_url}
                                   alt="Preview"
                                   onError={(e) => {
-                                    (e.target as HTMLImageElement).src = 'https://placehold.co/300x180?text=Preview+Error';
+                                    (e.target as HTMLImageElement).src = 'https://placehold.co/300x533?text=Preview+Error';
                                   }}
                                   sx={{ height: '100%', width: '100%', objectFit: 'cover' }}
                                 />
                               ) : (
-                                <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2 }}>
-                                  <Video className="h-6 w-6 text-indigo-500 mb-1" />
-                                  <Typography sx={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold', wordBreak: 'break-all', textAlign: 'center', px: 1 }}>
+                                <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 1.5 }}>
+                                  <Video className="h-5 w-5 text-indigo-500 mb-1" />
+                                  <Typography sx={{ fontSize: '9px', color: '#64748b', fontWeight: 'bold', wordBreak: 'break-all', textAlign: 'center', px: 0.5 }}>
                                     {item.media_url}
                                   </Typography>
                                 </Box>
@@ -699,23 +591,23 @@ export default function BrandAssets({ user, portalType }: BrandAssetsProps) {
                             </Box>
 
                             {/* Card Footer Actions */}
-                            <CardActions sx={{ justifyContent: 'space-between', px: 1.5, py: 1, bgcolor: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
-                              <Box sx={{ display: 'flex', gap: 0.25 }}>
+                            <CardActions sx={{ justifyContent: 'space-between', px: 1, py: 0.5, bgcolor: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
+                              <Box sx={{ display: 'flex', gap: 0.15 }}>
                                 <IconButton
                                   size="small"
                                   disabled={idx === 0}
                                   onClick={() => handleMoveUp(idx)}
-                                  sx={{ p: 0.5, color: '#64748b' }}
+                                  sx={{ p: 0.25, color: '#64748b' }}
                                 >
-                                  <ArrowUp className="h-3.5 w-3.5" />
+                                  <ChevronLeft className="h-4 w-4" />
                                 </IconButton>
                                 <IconButton
                                   size="small"
                                   disabled={idx === currentMedia.length - 1}
                                   onClick={() => handleMoveDown(idx)}
-                                  sx={{ p: 0.5, color: '#64748b' }}
+                                  sx={{ p: 0.25, color: '#64748b' }}
                                 >
-                                  <ArrowDown className="h-3.5 w-3.5" />
+                                  <ChevronRight className="h-4 w-4" />
                                 </IconButton>
                               </Box>
 
@@ -723,7 +615,7 @@ export default function BrandAssets({ user, portalType }: BrandAssetsProps) {
                                 size="small"
                                 onClick={() => handleRemoveAsset(idx)}
                                 sx={{
-                                  p: 0.5,
+                                  p: 0.25,
                                   color: '#64748b',
                                   '&:hover': {
                                     color: '#ef4444',
@@ -800,10 +692,10 @@ export default function BrandAssets({ user, portalType }: BrandAssetsProps) {
                   <Images className="h-7 w-7" style={{ color: primaryColor }} />
                 </Box>
                 <Typography sx={{ fontWeight: 'black', fontSize: '15px', color: '#1e293b', mb: 1 }}>
-                  Select an App to Manage Assets
+                  No Apps Registered
                 </Typography>
                 <Typography sx={{ fontSize: '12px', color: '#64748b', lineHeight: 1.625 }}>
-                  Choose an app from the list on the left to configure showcase galleries, screenshots, and promo video items.
+                  Please register a developer application in the Apps Registry page first to manage its showcase assets.
                 </Typography>
               </Box>
             </Paper>

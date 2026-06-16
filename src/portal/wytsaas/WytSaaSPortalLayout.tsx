@@ -4,9 +4,6 @@ import Topbar from './TopbarSaaS';
 import WytSaaSDashboard from './WytSaaSDashboard';
 import LoginModalSaaS from './LoginModalSaaS';
 import BrandsCRUD from './brand/BrandsCRUD';
-import BrandAssets from './brand/BrandAssets';
-import SSOIntegration from './brand/SSOIntegration';
-import BrandSubscriptions from './subscription/BrandSubscriptions';
 import AdminBrands from './admin/AdminBrands';
 import WytPassApprovals from './admin/WytPassApprovals';
 import MyAccountModal from './MyAccountModal';
@@ -86,12 +83,6 @@ export default function WytSaaSPortalLayout({ onSelectProduct }: ProductLayoutPr
             <div className="flex-grow flex flex-col overflow-hidden relative">
               {activeMenu === 'brand' ? (
                 <BrandsCRUD user={user} portalType="wytsaas" />
-              ) : activeMenu === 'brand-assets' ? (
-                <BrandAssets user={user} portalType="wytsaas" />
-              ) : activeMenu === 'sso-integration' ? (
-                <SSOIntegration user={user} portalType="wytsaas" />
-              ) : activeMenu === 'brand-subscriptions' ? (
-                <BrandSubscriptions user={user} portalType="wytsaas" />
               ) : activeMenu === 'watchlist' ? (
                 <WatchlistCRUD user={user} />
               ) : activeMenu === 'user-watchlist' ? (

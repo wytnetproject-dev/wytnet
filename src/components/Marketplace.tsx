@@ -123,7 +123,10 @@ export default function Marketplace({ currentHash }: MarketplaceProps) {
       (app.company_name && app.company_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (app.short_description && app.short_description.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchesCategory = selectedCategory === 'All' || app.brand_type === selectedCategory;
+    const matchesCategory = selectedCategory === 'All' || 
+      (app.brand_type && (Array.isArray(app.brand_type)
+        ? app.brand_type.some(t => t.toLowerCase() === selectedCategory.toLowerCase())
+        : app.brand_type.toLowerCase() === selectedCategory.toLowerCase()));
 
     return matchesSearch && matchesCategory;
   });
@@ -265,7 +268,9 @@ export default function Marketplace({ currentHash }: MarketplaceProps) {
                 {/* Bottom info section */}
                 <div className="flex items-center justify-between border-t border-slate-50 pt-4 mt-6">
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-500 uppercase tracking-wider">
-                    {app.brand_type || 'General'}
+                    {Array.isArray(app.brand_type)
+                      ? (app.brand_type.length > 0 ? app.brand_type.join(', ') : 'General')
+                      : (app.brand_type || 'General')}
                   </span>
 
                   <div className="flex items-center gap-1 text-xs font-semibold text-amber-500">

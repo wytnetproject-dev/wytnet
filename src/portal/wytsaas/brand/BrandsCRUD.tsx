@@ -19,7 +19,13 @@ import {
   Check,
   AlertTriangle,
   WifiOff,
-  Sliders
+  Sliders,
+  ChevronLeft,
+  KeyRound,
+  CreditCard,
+  Images,
+  Users,
+  Settings
 } from 'lucide-react';
 import type {
   Brand,
@@ -35,7 +41,12 @@ import {
 
 // Sub-components inside the same folder
 import BrandTable from './BrandTable';
-import BrandDrawer from './BrandDrawer';
+import BrandForm from './BrandForm';
+import BrandAssets from './BrandAssets';
+import SSOIntegration from './SSOIntegration';
+import BrandSubscriptions from '../subscription/BrandSubscriptions';
+import BrandUsers from './BrandUsers';
+import BrandIntegrationSettings from './BrandIntegrationSettings';
 import { fetchWatchlist, addToWatchlist, removeFromWatchlist } from '../api/watchlist';
 
 interface BrandsCRUDProps {
@@ -58,8 +69,10 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
   const [isSandbox, setIsSandbox] = useState(false);
   const [watchlistIds, setWatchlistIds] = useState<number[]>([]);
 
-  // Modal / Drawer Trigger State
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  // View State: 'list' | 'create' | 'edit' | 'details'
+  const [viewMode, setViewMode] = useState<'list' | 'create' | 'edit' | 'details'>('list');
+  const [selectedDetailBrand, setSelectedDetailBrand] = useState<Brand | null>(null);
+  const [detailTab, setDetailTab] = useState<'assets' | 'subscriptions' | 'sso' | 'users' | 'integration'>('assets');
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
   const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
@@ -172,14 +185,21 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
   const handleOpenCreate = () => {
     setEditingBrand(null);
     setFormError(null);
-    setIsDrawerOpen(true);
+    setViewMode('create');
   };
 
   // Open Dialog for Edit
   const handleOpenEdit = (brand: Brand) => {
     setEditingBrand(brand);
     setFormError(null);
-    setIsDrawerOpen(true);
+    setViewMode('edit');
+  };
+
+  // Open Details View
+  const handleOpenDetails = (brand: Brand) => {
+    setSelectedDetailBrand(brand);
+    setDetailTab('assets');
+    setViewMode('details');
   };
 
   // Handle submit from Drawer form
@@ -188,9 +208,9 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
       // Mock Sandbox save logic
       let updatedList = [...brands];
       const nowString = new Date().toISOString();
-      
-      const mappedTags = brandPayload.tags 
-        ? brandPayload.tags.map((t, idx) => ({ id: idx + 1, name: t })) 
+
+      const mappedTags = brandPayload.tags
+        ? brandPayload.tags.map((t, idx) => ({ id: idx + 1, name: t }))
         : undefined;
 
       if (editingBrand) {
@@ -198,11 +218,11 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
         updatedList = updatedList.map((b) =>
           b.id === editingBrand.id
             ? {
-                ...b,
-                ...brandPayload,
-                tags: mappedTags !== undefined ? mappedTags : b.tags,
-                updated_at: nowString,
-              } as Brand
+              ...b,
+              ...brandPayload,
+              tags: mappedTags !== undefined ? mappedTags : b.tags,
+              updated_at: nowString,
+            } as Brand
             : b
         );
         showToast('App updated successfully (Sandbox)', 'success');
@@ -282,6 +302,168 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
     }
   };
 
+  if (viewMode === 'create' || viewMode === 'edit') {
+    return (
+      <Box className="flex-grow overflow-hidden h-full flex flex-col relative bg-[#f8fafc]">
+        <Snackbar
+          open={toastOpen}
+          autoHideDuration={4000}
+          onClose={() => setToastOpen(false)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <Alert onClose={() => setToastOpen(false)} severity={toastSeverity} sx={{ width: '100%' }}>
+            {toastMessage}
+          </Alert>
+        </Snackbar>
+
+        <BrandForm
+          onCancel={() => setViewMode('list')}
+          onSubmit={handleDrawerSubmit}
+          editingBrand={editingBrand}
+          primaryColor={primaryColor}
+          primaryHoverColor={primaryHoverColor}
+          formError={formError}
+          setFormError={setFormError}
+          isSandbox={isSandbox}
+        />
+      </Box>
+    );
+  }
+
+  if (viewMode === 'details' && selectedDetailBrand) {
+    return (
+      <Box className="flex-grow overflow-y-auto h-full flex flex-col relative bg-[#f8fafc] px-8 py-6 select-none space-y-6">
+        {/* Header with Back button and brand info */}
+        <div className="flex items-center gap-4 shrink-0">
+          <Button
+            variant="outlined"
+            onClick={() => setViewMode('list')}
+            sx={{
+              borderColor: '#e2e8f0',
+              color: '#475569',
+              borderRadius: '12px',
+              textTransform: 'none',
+              fontWeight: 'bold',
+              bgcolor: 'white',
+              minWidth: 'auto',
+              px: 2.5,
+              py: 1,
+              '&:hover': {
+                borderColor: '#cbd5e1',
+                bgcolor: '#f8fafc',
+              }
+            }}
+            startIcon={<ChevronLeft className="h-4 w-4" />}
+          >
+            Back to Registry
+          </Button>
+
+          <div className="flex items-center gap-3">
+            {selectedDetailBrand.logo_url ? (
+              <img
+                src={selectedDetailBrand.logo_url}
+                alt={`${selectedDetailBrand.name} logo`}
+                className="h-10 w-10 object-cover rounded-xl border border-slate-100 shadow-sm"
+              />
+            ) : (
+              <div className="h-10 w-10 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-sm" style={{ backgroundColor: primaryColor }}>
+                {selectedDetailBrand.name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <h2 className="text-xl font-extrabold text-wytnet-dark flex items-center gap-2 leading-none">
+                {selectedDetailBrand.name}
+              </h2>
+              <span className="text-[10px] font-mono text-slate-400 mt-1 block">/{selectedDetailBrand.slug}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Selection buttons */}
+        <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit shrink-0">
+          <button
+            onClick={() => setDetailTab('assets')}
+            className={`text-xs font-bold px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${detailTab === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+              }`}
+          >
+            <Images className="h-3.5 w-3.5" />
+            App Assets
+          </button>
+          <button
+            onClick={() => setDetailTab('subscriptions')}
+            className={`text-xs font-bold px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${detailTab === 'subscriptions' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+              }`}
+          >
+            <CreditCard className="h-3.5 w-3.5" />
+            Subscription Plans
+          </button>
+          <button
+            onClick={() => setDetailTab('users')}
+            className={`text-xs font-bold px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${detailTab === 'users' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+              }`}
+          >
+            <Users className="h-3.5 w-3.5" />
+            My Users
+          </button>
+          <button
+            onClick={() => setDetailTab('integration')}
+            className={`text-xs font-bold px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${detailTab === 'integration' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+              }`}
+          >
+            <Settings className="h-3.5 w-3.5" />
+            API Integration
+          </button>
+          <button
+            onClick={() => setDetailTab('sso')}
+            className={`text-xs font-bold px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${detailTab === 'sso' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+              }`}
+          >
+            <KeyRound className="h-3.5 w-3.5" />
+            SSO Integration
+          </button>
+        </div>
+
+        {/* Tab Workspace content */}
+        <div className="bg-white rounded-2xl border border-slate-100 flex flex-col p-6 shadow-sm">
+          {detailTab === 'sso' ? (
+            <SSOIntegration
+              user={user}
+              portalType={portalType}
+              brandId={selectedDetailBrand.id}
+              isEmbedded={true}
+            />
+          ) : detailTab === 'assets' ? (
+            <BrandAssets
+              user={user}
+              portalType={portalType}
+              brandId={selectedDetailBrand.id}
+              isEmbedded={true}
+            />
+          ) : detailTab === 'users' ? (
+            <BrandUsers
+              portalType={portalType}
+              brandId={selectedDetailBrand.id}
+              isSandbox={isSandbox}
+            />
+          ) : detailTab === 'integration' ? (
+            <BrandIntegrationSettings
+              brandId={selectedDetailBrand.id}
+              isSandbox={isSandbox}
+              portalType={portalType}
+            />
+          ) : (
+            <BrandSubscriptions
+              user={user}
+              portalType={portalType}
+              brandId={selectedDetailBrand.id}
+              isEmbedded={true}
+            />
+          )}
+        </div>
+      </Box>
+    );
+  }
+
   return (
     <Box className="flex-grow bg-[#f8fafc] overflow-y-auto px-8 py-6 select-none space-y-6">
       {/* Toast notifications */}
@@ -302,7 +484,7 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
           <div className="text-[10px] font-bold text-slate-400 tracking-wider uppercase flex items-center gap-1.5">
             Products / {portalType === 'wytsaas' ? 'WytSaaS' : 'WytPass'} / Settings / <Sliders className="h-3 w-3 inline" /> Developer
           </div>
-          
+
           <div className="flex items-center gap-3 mt-1">
             <h2 className="text-2xl font-extrabold text-wytnet-dark">
               Apps Registry
@@ -441,22 +623,11 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
           primaryColor={primaryColor}
           onEdit={handleOpenEdit}
           onDelete={handleOpenDelete}
+          onViewDetails={handleOpenDetails}
           watchlistIds={watchlistIds}
           onToggleWatch={handleToggleWatch}
         />
       </Paper>
-
-      {/* Add / Edit Drawer Form sub-component */}
-      <BrandDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        onSubmit={handleDrawerSubmit}
-        editingBrand={editingBrand}
-        primaryColor={primaryColor}
-        primaryHoverColor={primaryHoverColor}
-        formError={formError}
-        setFormError={setFormError}
-      />
 
       {/* DELETE DIALOG MODAL */}
       <Dialog

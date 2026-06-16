@@ -36,11 +36,13 @@ import { fetchBrands, fetchWhitePassReview, submitWhitePassReview } from '../api
 interface SSOIntegrationProps {
   user?: { email: string; name: string; role: string } | null;
   portalType: 'wytsaas' | 'wytpass';
+  brandId?: number;
+  isEmbedded?: boolean;
 }
 
 const DEFAULT_MOCK_BRANDS: Brand[] = [];
 
-export default function SSOIntegration({ user: _user, portalType }: SSOIntegrationProps) {
+export default function SSOIntegration({ user: _user, portalType, brandId, isEmbedded }: SSOIntegrationProps) {
   // Theme styling depending on portalType
   const primaryColor = portalType === 'wytsaas' ? '#0066cc' : '#9333ea';
   const primaryHoverColor = portalType === 'wytsaas' ? '#0052a3' : '#7e22ce';
@@ -88,7 +90,13 @@ export default function SSOIntegration({ user: _user, portalType }: SSOIntegrati
       setBrands(fetched);
       setIsSandbox(false);
       
-      if (selectedBrand) {
+      if (brandId) {
+        const b = fetched.find(item => item.id === brandId);
+        if (b) {
+          setSelectedBrand(b);
+          await loadReviewStatus(b.id, false);
+        }
+      } else if (selectedBrand) {
         const updatedSelected = fetched.find(b => b.id === selectedBrand.id);
         if (updatedSelected) {
           setSelectedBrand(updatedSelected);
@@ -103,7 +111,13 @@ export default function SSOIntegration({ user: _user, portalType }: SSOIntegrati
       setIsSandbox(true);
       showToast('FastAPI server offline. Switched to Mock Sandbox Mode.', 'warning');
       
-      if (selectedBrand) {
+      if (brandId) {
+        const b = initial.find((item: Brand) => item.id === brandId);
+        if (b) {
+          setSelectedBrand(b);
+          await loadReviewStatus(b.id, true, initial);
+        }
+      } else if (selectedBrand) {
         const updatedSelected = initial.find((b: Brand) => b.id === selectedBrand.id);
         if (updatedSelected) {
           setSelectedBrand(updatedSelected);
@@ -160,6 +174,16 @@ export default function SSOIntegration({ user: _user, portalType }: SSOIntegrati
   useEffect(() => {
     loadBrands();
   }, []);
+
+  useEffect(() => {
+    if (brandId && brands.length > 0) {
+      const b = brands.find(item => item.id === brandId);
+      if (b) {
+        setSelectedBrand(b);
+        loadReviewStatus(b.id, isSandbox);
+      }
+    }
+  }, [brandId, brands, isSandbox]);
 
   // Filter list when search or brands updates
   useEffect(() => {
@@ -300,7 +324,7 @@ export default function SSOIntegration({ user: _user, portalType }: SSOIntegrati
   const isFormLocked = isPending || isApproved;
 
   return (
-    <Box className="flex-grow bg-[#f8fafc] overflow-hidden flex flex-col px-8 py-6 select-none space-y-6 h-full">
+    <Box className={`flex flex-col select-none ${isEmbedded ? 'bg-transparent px-0 py-0 space-y-4' : 'bg-[#f8fafc] px-8 py-6 space-y-6 flex-grow overflow-hidden h-full'}`}>
       {/* Toast notifications */}
       <Snackbar
         open={toastOpen}
@@ -314,77 +338,79 @@ export default function SSOIntegration({ user: _user, portalType }: SSOIntegrati
       </Snackbar>
 
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
-        <div>
-          <div className="text-[10px] font-bold text-slate-400 tracking-wider uppercase flex items-center gap-1.5">
-            Products / {portalType === 'wytsaas' ? 'WytSaaS' : 'WytPass'} / Authentication / <KeyRound className="h-3 w-3 inline" /> Developer
+      {!isEmbedded && (
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
+          <div>
+            <div className="text-[10px] font-bold text-slate-400 tracking-wider uppercase flex items-center gap-1.5">
+              Products / {portalType === 'wytsaas' ? 'WytSaaS' : 'WytPass'} / Authentication / <KeyRound className="h-3 w-3 inline" /> Developer
+            </div>
+            
+            <div className="flex items-center gap-3 mt-1">
+              <h2 className="text-2xl font-extrabold text-wytnet-dark">
+                WhitePass SSO Integration
+              </h2>
+              {isSandbox ? (
+                <Chip
+                  icon={<WifiOff className="h-3 w-3" style={{ color: '#d97706' }} />}
+                  label="SANDBOX MODE"
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    borderColor: '#fef3c7',
+                    bgcolor: '#fffbeb',
+                    color: '#b45309',
+                    fontWeight: 'bold',
+                    fontSize: '10px'
+                  }}
+                />
+              ) : (
+                <Chip
+                  icon={<Check className="h-3.5 w-3.5" style={{ color: '#059669' }} />}
+                  label="CONNECTED TO API"
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    borderColor: '#d1fae5',
+                    bgcolor: '#ecfdf5',
+                    color: '#047857',
+                    fontWeight: 'bold',
+                    fontSize: '10px'
+                  }}
+                />
+              )}
+            </div>
+            <p className="text-xs font-semibold text-slate-500 mt-1">
+              Configure single sign-on parameters, track installation checklists, and submit SSO reviews.
+            </p>
           </div>
-          
-          <div className="flex items-center gap-3 mt-1">
-            <h2 className="text-2xl font-extrabold text-wytnet-dark">
-              WhitePass SSO Integration
-            </h2>
-            {isSandbox ? (
-              <Chip
-                icon={<WifiOff className="h-3 w-3" style={{ color: '#d97706' }} />}
-                label="SANDBOX MODE"
-                variant="outlined"
-                size="small"
-                sx={{
-                  borderColor: '#fef3c7',
-                  bgcolor: '#fffbeb',
-                  color: '#b45309',
-                  fontWeight: 'bold',
-                  fontSize: '10px'
-                }}
-              />
-            ) : (
-              <Chip
-                icon={<Check className="h-3.5 w-3.5" style={{ color: '#059669' }} />}
-                label="CONNECTED TO API"
-                variant="outlined"
-                size="small"
-                sx={{
-                  borderColor: '#d1fae5',
-                  bgcolor: '#ecfdf5',
-                  color: '#047857',
-                  fontWeight: 'bold',
-                  fontSize: '10px'
-                }}
-              />
-            )}
-          </div>
-          <p className="text-xs font-semibold text-slate-500 mt-1">
-            Configure single sign-on parameters, track installation checklists, and submit SSO reviews.
-          </p>
-        </div>
 
-        <div>
-          <Button
-            variant="outlined"
-            size="medium"
-            onClick={loadBrands}
-            sx={{
-              borderColor: '#e2e8f0',
-              color: '#475569',
-              borderRadius: '12px',
-              textTransform: 'none',
-              fontWeight: 'bold',
-              bgcolor: 'white',
-              '&:hover': {
-                borderColor: '#cbd5e1',
-                bgcolor: '#f8fafc',
-              }
-            }}
-            startIcon={<RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />}
-          >
-            Sync Registry
-          </Button>
+          <div>
+            <Button
+              variant="outlined"
+              size="medium"
+              onClick={loadBrands}
+              sx={{
+                borderColor: '#e2e8f0',
+                color: '#475569',
+                borderRadius: '12px',
+                textTransform: 'none',
+                fontWeight: 'bold',
+                bgcolor: 'white',
+                '&:hover': {
+                  borderColor: '#cbd5e1',
+                  bgcolor: '#f8fafc',
+                }
+              }}
+              startIcon={<RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />}
+            >
+              Sync Registry
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Connection Offline Status Indicator */}
-      {isSandbox && (
+      {isSandbox && !isEmbedded && (
         <Alert
           severity="info"
           icon={<WifiOff className="h-4.5 w-4.5" />}
@@ -406,101 +432,103 @@ export default function SSOIntegration({ user: _user, portalType }: SSOIntegrati
       )}
 
       {/* Main Split Interface Area */}
-      <Box sx={{ display: 'flex', gap: 3, flexGrow: 1, minHeight: 0, overflow: 'hidden' }}>
+      <Box sx={{ display: 'flex', gap: 3, flexGrow: isEmbedded ? 0 : 1, minHeight: isEmbedded ? 'auto' : 0, overflow: isEmbedded ? 'visible' : 'hidden' }}>
         
         {/* Left column: Brands List Sidebar */}
-        <Paper
-          elevation={0}
-          sx={{
-            width: 280,
-            borderRadius: '20px',
-            border: '1px solid #f1f5f9',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.005)'
-          }}
-        >
-          {/* Sidebar search box */}
-          <Box sx={{ p: 2, borderBottom: '1px solid #f8fafc' }}>
-            <Box className="relative">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search registry..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-slate-100 hover:border-slate-200 focus:border-slate-300 text-xs font-semibold pl-9 pr-3 py-2.5 rounded-xl outline-none transition-all placeholder-slate-400 text-wytnet-dark"
-              />
+        {!isEmbedded && (
+          <Paper
+            elevation={0}
+            sx={{
+              width: 280,
+              borderRadius: '20px',
+              border: '1px solid #f1f5f9',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.005)'
+            }}
+          >
+            {/* Sidebar search box */}
+            <Box sx={{ p: 2, borderBottom: '1px solid #f8fafc' }}>
+              <Box className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search registry..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-[#f8fafc] border border-slate-100 hover:border-slate-200 focus:border-slate-300 text-xs font-semibold pl-9 pr-3 py-2.5 rounded-xl outline-none transition-all placeholder-slate-400 text-wytnet-dark"
+                />
+              </Box>
             </Box>
-          </Box>
 
-          {/* Brands scroll list */}
-          <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 1 }}>
-            <List disablePadding>
-              {filteredBrands.map((b) => {
-                const isSelected = selectedBrand?.id === b.id;
-                return (
-                  <ListItemButton
-                    key={b.id}
-                    onClick={() => handleSelectBrand(b)}
-                    sx={{
-                      borderRadius: '12px',
-                      mb: 0.5,
-                      border: isSelected ? `1px solid ${selectionBorderColor}` : '1px solid transparent',
-                      bgcolor: isSelected ? selectionBgColor : 'transparent',
-                      '&:hover': {
-                        bgcolor: isSelected ? selectionBgColor : '#f8fafc'
-                      }
-                    }}
-                  >
-                    <ListItemAvatar sx={{ minWidth: 44 }}>
-                      {b.logo_url ? (
-                        <Avatar
-                          src={b.logo_url}
-                          alt={b.name}
-                          variant="rounded"
-                          sx={{ width: 32, height: 32, border: '1px solid #f1f5f9' }}
-                        />
-                      ) : (
-                        <Avatar
-                          variant="rounded"
-                          sx={{
-                            width: 32,
-                            height: 32,
-                            bgcolor: primaryColor,
-                            fontWeight: 'black',
-                            fontSize: '12px'
-                          }}
-                        >
-                          {b.name.charAt(0).toUpperCase()}
-                        </Avatar>
-                      )}
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '12px', color: '#1e293b' }}>
-                          {b.name}
-                        </Typography>
-                      }
-                      secondary={
-                        <Typography sx={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace' }}>
-                          /{b.slug}
-                        </Typography>
-                      }
-                    />
-                  </ListItemButton>
-                );
-              })}
+            {/* Brands scroll list */}
+            <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 1 }}>
+              <List disablePadding>
+                {filteredBrands.map((b) => {
+                  const isSelected = selectedBrand?.id === b.id;
+                  return (
+                    <ListItemButton
+                      key={b.id}
+                      onClick={() => handleSelectBrand(b)}
+                      sx={{
+                        borderRadius: '12px',
+                        mb: 0.5,
+                        border: isSelected ? `1px solid ${selectionBorderColor}` : '1px solid transparent',
+                        bgcolor: isSelected ? selectionBgColor : 'transparent',
+                        '&:hover': {
+                          bgcolor: isSelected ? selectionBgColor : '#f8fafc'
+                        }
+                      }}
+                    >
+                      <ListItemAvatar sx={{ minWidth: 44 }}>
+                        {b.logo_url ? (
+                          <Avatar
+                            src={b.logo_url}
+                            alt={b.name}
+                            variant="rounded"
+                            sx={{ width: 32, height: 32, border: '1px solid #f1f5f9' }}
+                          />
+                        ) : (
+                          <Avatar
+                            variant="rounded"
+                            sx={{
+                              width: 32,
+                              height: 32,
+                              bgcolor: primaryColor,
+                              fontWeight: 'black',
+                              fontSize: '12px'
+                            }}
+                          >
+                            {b.name.charAt(0).toUpperCase()}
+                          </Avatar>
+                        )}
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={
+                          <Typography sx={{ fontWeight: 'bold', fontSize: '12px', color: '#1e293b' }}>
+                            {b.name}
+                          </Typography>
+                        }
+                        secondary={
+                          <Typography sx={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace' }}>
+                            /{b.slug}
+                          </Typography>
+                        }
+                      />
+                    </ListItemButton>
+                  );
+                })}
 
-              {filteredBrands.length === 0 && (
-                <Typography sx={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', mt: 4, fontWeight: '600' }}>
-                  No Apps Registered
-                </Typography>
-              )}
-            </List>
-          </Box>
-        </Paper>
+                {filteredBrands.length === 0 && (
+                  <Typography sx={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', mt: 4, fontWeight: '600' }}>
+                    No Apps Registered
+                  </Typography>
+                )}
+              </List>
+            </Box>
+          </Paper>
+        )}
 
         {/* Right column: Selected Brand SSO Verification dashboard */}
         <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -508,12 +536,12 @@ export default function SSOIntegration({ user: _user, portalType }: SSOIntegrati
             <Paper
               elevation={0}
               sx={{
-                flexGrow: 1,
+                flexGrow: isEmbedded ? 0 : 1,
                 borderRadius: '20px',
                 border: '1px solid #f1f5f9',
                 display: 'flex',
                 flexDirection: 'column',
-                overflow: 'hidden',
+                overflow: isEmbedded ? 'visible' : 'hidden',
                 boxShadow: '0 4px 20px rgba(0, 0, 0, 0.005)'
               }}
             >
@@ -528,7 +556,7 @@ export default function SSOIntegration({ user: _user, portalType }: SSOIntegrati
               </Box>
 
               {/* Integration Checklists & Progress Workspace */}
-              <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 3, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <Box sx={{ flexGrow: isEmbedded ? 0 : 1, overflowY: isEmbedded ? 'visible' : 'auto', p: 3, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 
                 {/* 1. Review Status Display Banner */}
                 <Box>

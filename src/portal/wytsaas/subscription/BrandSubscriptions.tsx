@@ -22,7 +22,6 @@ import {
   Check,
   AlertTriangle,
   WifiOff,
-  FolderOpen,
   CreditCard
 } from 'lucide-react';
 import type { Brand } from '../api/brand';
@@ -45,9 +44,11 @@ import SubscriptionDialog from './SubscriptionDialog';
 interface BrandSubscriptionsProps {
   user?: { email: string; name: string; role: string } | null;
   portalType: 'wytsaas' | 'wytpass';
+  brandId?: number;
+  isEmbedded?: boolean;
 }
 
-export default function BrandSubscriptions({ user: _user, portalType }: BrandSubscriptionsProps) {
+export default function BrandSubscriptions({ user: _user, portalType, brandId, isEmbedded }: BrandSubscriptionsProps) {
   const primaryColor = portalType === 'wytsaas' ? '#0066cc' : '#9333ea';
   const primaryHoverColor = portalType === 'wytsaas' ? '#0052a3' : '#7e22ce';
 
@@ -57,7 +58,9 @@ export default function BrandSubscriptions({ user: _user, portalType }: BrandSub
   const [filteredPlans, setFilteredPlans] = useState<BrandSubscriptionPlan[]>([]);
 
   // Filtering states
-  const [selectedBrandFilter, setSelectedBrandFilter] = useState<string>('all');
+  const [selectedBrandFilter, setSelectedBrandFilter] = useState<string>(
+    brandId ? brandId.toString() : 'all'
+  );
   const [searchQuery, setSearchQuery] = useState('');
 
   // Status states
@@ -129,6 +132,12 @@ export default function BrandSubscriptions({ user: _user, portalType }: BrandSub
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (brandId) {
+      setSelectedBrandFilter(brandId.toString());
+    }
+  }, [brandId]);
 
   // Filter plans based on brand select and search query
   useEffect(() => {
@@ -282,7 +291,7 @@ export default function BrandSubscriptions({ user: _user, portalType }: BrandSub
   };
 
   return (
-    <Box className="flex-grow bg-[#f8fafc] overflow-y-auto px-8 py-6 select-none space-y-6">
+    <Box className={`select-none ${isEmbedded ? 'bg-transparent px-0 py-0 space-y-4' : 'bg-[#f8fafc] px-8 py-6 space-y-6 flex-grow overflow-y-auto h-full'}`}>
       {/* Toast SnackBar */}
       <Snackbar
         open={toastOpen}
@@ -296,102 +305,104 @@ export default function BrandSubscriptions({ user: _user, portalType }: BrandSub
       </Snackbar>
 
       {/* Header controls bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="text-[10px] font-bold text-slate-400 tracking-wider uppercase flex items-center gap-1.5">
-            Products / {portalType === 'wytsaas' ? 'WytSaaS' : 'WytPass'} / Subscriptions / <CreditCard className="h-3 w-3 inline" /> Developer
+      {!isEmbedded && (
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="text-[10px] font-bold text-slate-400 tracking-wider uppercase flex items-center gap-1.5">
+              Products / {portalType === 'wytsaas' ? 'WytSaaS' : 'WytPass'} / Subscriptions / <CreditCard className="h-3 w-3 inline" /> Developer
+            </div>
+
+            <div className="flex items-center gap-3 mt-1">
+              <h2 className="text-2xl font-extrabold text-wytnet-dark">
+                App Subscription Plans
+              </h2>
+              {isSandbox ? (
+                <Chip
+                  icon={<WifiOff className="h-3 w-3" style={{ color: '#d97706' }} />}
+                  label="SANDBOX MODE"
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    borderColor: '#fef3c7',
+                    bgcolor: '#fffbeb',
+                    color: '#b45309',
+                    fontWeight: 'bold',
+                    fontSize: '10px'
+                  }}
+                />
+              ) : (
+                <Chip
+                  icon={<Check className="h-3.5 w-3.5" style={{ color: '#059669' }} />}
+                  label="CONNECTED TO API"
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    borderColor: '#d1fae5',
+                    bgcolor: '#ecfdf5',
+                    color: '#047857',
+                    fontWeight: 'bold',
+                    fontSize: '10px'
+                  }}
+                />
+              )}
+            </div>
+            <p className="text-xs font-semibold text-slate-500 mt-1">
+              Create, configure and manage billing plans, subscription pricing and client models.
+            </p>
           </div>
 
-          <div className="flex items-center gap-3 mt-1">
-            <h2 className="text-2xl font-extrabold text-wytnet-dark">
-              App Subscription Plans
-            </h2>
-            {isSandbox ? (
-              <Chip
-                icon={<WifiOff className="h-3 w-3" style={{ color: '#d97706' }} />}
-                label="SANDBOX MODE"
-                variant="outlined"
-                size="small"
-                sx={{
-                  borderColor: '#fef3c7',
-                  bgcolor: '#fffbeb',
-                  color: '#b45309',
-                  fontWeight: 'bold',
-                  fontSize: '10px'
-                }}
-              />
-            ) : (
-              <Chip
-                icon={<Check className="h-3.5 w-3.5" style={{ color: '#059669' }} />}
-                label="CONNECTED TO API"
-                variant="outlined"
-                size="small"
-                sx={{
-                  borderColor: '#d1fae5',
-                  bgcolor: '#ecfdf5',
-                  color: '#047857',
-                  fontWeight: 'bold',
-                  fontSize: '10px'
-                }}
-              />
-            )}
-          </div>
-          <p className="text-xs font-semibold text-slate-500 mt-1">
-            Create, configure and manage billing plans, subscription pricing and client models.
-          </p>
-        </div>
+          <div className="flex items-center gap-2.5">
+            <Button
+              variant="outlined"
+              size="medium"
+              onClick={() => loadData()}
+              sx={{
+                borderColor: '#e2e8f0',
+                color: '#475569',
+                borderRadius: '12px',
+                textTransform: 'none',
+                fontWeight: 'bold',
+                bgcolor: 'white',
+                '&:hover': {
+                  borderColor: '#cbd5e1',
+                  bgcolor: '#f8fafc',
+                }
+              }}
+              startIcon={<RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />}
+            >
+              Refresh
+            </Button>
 
-        <div className="flex items-center gap-2.5">
-          <Button
-            variant="outlined"
-            size="medium"
-            onClick={() => loadData()}
-            sx={{
-              borderColor: '#e2e8f0',
-              color: '#475569',
-              borderRadius: '12px',
-              textTransform: 'none',
-              fontWeight: 'bold',
-              bgcolor: 'white',
-              '&:hover': {
-                borderColor: '#cbd5e1',
-                bgcolor: '#f8fafc',
-              }
-            }}
-            startIcon={<RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />}
-          >
-            Refresh
-          </Button>
-
-          <Button
-            variant="contained"
-            size="medium"
-            onClick={handleOpenCreate}
-            disabled={brands.length === 0}
-            sx={{
-              bgcolor: primaryColor,
-              borderRadius: '12px',
-              textTransform: 'none',
-              fontWeight: 'bold',
-              boxShadow: 'none',
-              '&:hover': {
-                bgcolor: primaryHoverColor,
+            <Button
+              variant="contained"
+              size="medium"
+              onClick={handleOpenCreate}
+              disabled={brands.length === 0}
+              sx={{
+                bgcolor: primaryColor,
+                borderRadius: '12px',
+                textTransform: 'none',
+                fontWeight: 'bold',
                 boxShadow: 'none',
-              },
-              '&:disabled': {
-                bgcolor: '#cbd5e1',
-                color: '#94a3b8'
-              }
-            }}
-            startIcon={<Plus className="h-4 w-4" />}
-          >
-            Create Plan
-          </Button>
+                '&:hover': {
+                  bgcolor: primaryHoverColor,
+                  boxShadow: 'none',
+                },
+                '&:disabled': {
+                  bgcolor: '#cbd5e1',
+                  color: '#94a3b8'
+                }
+              }}
+              startIcon={<Plus className="h-4 w-4" />}
+            >
+              Create Plan
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Connection Offline alert */}
-      {isSandbox && (
+      {isSandbox && !isEmbedded && (
         <Alert
           severity="info"
           icon={<WifiOff className="h-4.5 w-4.5" />}
@@ -424,33 +435,35 @@ export default function BrandSubscriptions({ user: _user, portalType }: BrandSub
         {/* Filters headers inside card */}
         <Box sx={{ p: 3, borderBottom: '1px solid #f8fafc', display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, items: 'center', gap: 2 }}>
           {/* Brand select filter dropdown */}
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <Select
-              value={selectedBrandFilter}
-              onChange={(e) => setSelectedBrandFilter(e.target.value)}
-              displayEmpty
-              className="bg-white border-slate-100 font-semibold text-xs rounded-xl outline-none"
-              sx={{
-                borderRadius: '12px',
-                fontSize: '11px',
-                fontWeight: 'bold',
-                color: '#334155',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#f1f5f9'
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#cbd5e1'
-                }
-              }}
-            >
-              <MenuItem value="all" sx={{ fontSize: '11.5px', fontWeight: 'bold' }}>All Apps Registry</MenuItem>
-              {brands.map(b => (
-                <MenuItem key={b.id} value={b.id.toString()} sx={{ fontSize: '11.5px', fontWeight: 'bold' }}>
-                  {b.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          {!isEmbedded && (
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <Select
+                value={selectedBrandFilter}
+                onChange={(e) => setSelectedBrandFilter(e.target.value)}
+                displayEmpty
+                className="bg-white border-slate-100 font-semibold text-xs rounded-xl outline-none"
+                sx={{
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  color: '#334155',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#f1f5f9'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#cbd5e1'
+                  }
+                }}
+              >
+                <MenuItem value="all" sx={{ fontSize: '11.5px', fontWeight: 'bold' }}>All Apps Registry</MenuItem>
+                {brands.map(b => (
+                  <MenuItem key={b.id} value={b.id.toString()} sx={{ fontSize: '11.5px', fontWeight: 'bold' }}>
+                    {b.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
 
           {/* Search plan name, desc */}
           <Box className="relative flex-grow max-w-sm">
@@ -490,6 +503,7 @@ export default function BrandSubscriptions({ user: _user, portalType }: BrandSub
         brands={brands}
         primaryColor={primaryColor}
         primaryHoverColor={primaryHoverColor}
+        brandId={brandId}
       />
 
       {/* DELETE CONFIRM DIALOG */}

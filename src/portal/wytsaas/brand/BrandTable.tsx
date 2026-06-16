@@ -12,7 +12,7 @@ import {
   IconButton,
   Box
 } from '@mui/material';
-import { Edit2, Trash2, FolderOpen, Star } from 'lucide-react';
+import { Edit2, Trash2, FolderOpen, Star, Eye } from 'lucide-react';
 import type { Brand } from '../api/brand';
 
 interface BrandTableProps {
@@ -21,6 +21,7 @@ interface BrandTableProps {
   primaryColor: string;
   onEdit: (brand: Brand) => void;
   onDelete: (brand: Brand) => void;
+  onViewDetails?: (brand: Brand) => void;
   watchlistIds?: number[];
   onToggleWatch?: (brandId: number) => void;
 }
@@ -31,6 +32,7 @@ export default function BrandTable({
   primaryColor,
   onEdit,
   onDelete,
+  onViewDetails,
   watchlistIds = [],
   onToggleWatch = () => {}
 }: BrandTableProps) {
@@ -173,18 +175,29 @@ export default function BrandTable({
                 </div>
               </TableCell>
               <TableCell>
-                <Chip
-                  label={brand.brand_type || 'saas'}
-                  size="small"
-                  sx={{
-                    fontSize: '10px',
-                    fontWeight: 'bold',
-                    textTransform: 'uppercase',
-                    bgcolor: '#f1f5f9',
-                    color: '#475569',
-                    borderRadius: '8px'
-                  }}
-                />
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                  {(() => {
+                    const types = brand.brand_type
+                      ? (Array.isArray(brand.brand_type) ? brand.brand_type : [brand.brand_type])
+                      : ['saas'];
+                    return types.map((t, idx) => (
+                      <Chip
+                        key={idx}
+                        label={t}
+                        size="small"
+                        sx={{
+                          fontSize: '9px',
+                          fontWeight: 'bold',
+                          textTransform: 'uppercase',
+                          bgcolor: '#f1f5f9',
+                          color: '#475569',
+                          borderRadius: '8px',
+                          height: '20px'
+                        }}
+                      />
+                    ));
+                  })()}
+                </Box>
               </TableCell>
               <TableCell>
                 <Typography sx={{ fontSize: '12px', fontWeight: '500', color: '#334155' }}>
@@ -230,6 +243,23 @@ export default function BrandTable({
                       <Star className="h-4 w-4" style={{ fill: watchlistIds.includes(brand.id) ? '#eab308' : 'transparent' }} />
                     </IconButton>
                   </Tooltip>
+                  {onViewDetails && (
+                    <Tooltip title="View App Details">
+                      <IconButton
+                        onClick={() => onViewDetails(brand)}
+                        size="small"
+                        sx={{
+                          color: '#64748b',
+                          '&:hover': {
+                            color: primaryColor,
+                            bgcolor: `${primaryColor}10`
+                          }
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                   <IconButton
                     onClick={() => onEdit(brand)}
                     size="small"

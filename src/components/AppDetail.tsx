@@ -3,7 +3,7 @@ import {
   ArrowLeft, ArrowRight, Star, Share2, Check,
   Smartphone, ShieldAlert, Lock, Trash2, MoreVertical,
   ChevronDown, ChevronUp, Flag, ExternalLink,
-  Bookmark, BookmarkPlus,
+  Bookmark, BookmarkPlus, X,
 } from 'lucide-react';
 import type { Brand, BrandReview } from '../portal/wytsaas/api/brand';
 import { fetchWatchlist, addToWatchlist, removeFromWatchlist } from '../portal/wytsaas/api/watchlist';
@@ -18,6 +18,13 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
   const [supportExpanded, setSupportExpanded] = useState(false);
   const [installStatus, setInstallStatus] = useState<'idle' | 'installing' | 'installed'>('idle');
 
+  const [modalLoginEmail, setModalLoginEmail] = useState('');
+  const [modalLoginPassword, setModalLoginPassword] = useState('');
+  const [isModalLoggingIn, setIsModalLoggingIn] = useState(false);
+  const [modalLoginError, setModalLoginError] = useState<string | null>(null);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+
   // Active token and user state
   const [authToken, setAuthToken] = useState(() => {
     return localStorage.getItem('wytsaas_token') || localStorage.getItem('wytpass_token') || '';
@@ -30,6 +37,435 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
       return null;
     }
   });
+
+  const [plans, setPlans] = useState<any[]>([]);
+  const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
+  const [activePlanId, setActivePlanId] = useState<number | null>(() => {
+    try {
+      const userStr = localStorage.getItem('wytsaas_user') || localStorage.getItem('wytpass_user');
+      let userEmail = 'guest';
+      if (userStr) {
+        const userObj = JSON.parse(userStr);
+        if (userObj && userObj.email) {
+          userEmail = userObj.email;
+        }
+      }
+      const activeSubs = localStorage.getItem(`mock_user_subscriptions_${userEmail}`);
+      if (activeSubs) {
+        const parsed = JSON.parse(activeSubs);
+        if (parsed && typeof parsed === 'object') {
+          if (Array.isArray(parsed)) {
+            return null;
+          } else if (parsed[app.id] !== undefined) {
+            return Number(parsed[app.id]);
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return null;
+  });
+
+  const isSubscribed = () => {
+    if (activePlanId !== null) return true;
+    try {
+      const userStr = localStorage.getItem('wytsaas_user') || localStorage.getItem('wytpass_user');
+      let userEmail = 'guest';
+      if (userStr) {
+        const userObj = JSON.parse(userStr);
+        if (userObj && userObj.email) {
+          userEmail = userObj.email;
+        }
+      }
+      const activeSubs = localStorage.getItem(`mock_user_subscriptions_${userEmail}`);
+      if (activeSubs) {
+        const parsed = JSON.parse(activeSubs);
+        if (Array.isArray(parsed)) {
+          return parsed.includes(app.id);
+        } else if (parsed && typeof parsed === 'object') {
+          return parsed[app.id] !== undefined;
+        }
+      }
+    } catch {}
+    return false;
+  };
+
+  // Load Razorpay SDK Script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  // Load plans from API or local storage
+  useEffect(() => {
+    const loadPlans = async () => {
+      try {
+        const headers: any = {};
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+        const response = await fetch(`http://localhost:8000/brands/subscription-plans/?brand_id=${app.id}`, {
+          headers
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const fetchedPlans = data.items || [];
+          if (fetchedPlans.length > 0) {
+            setPlans(fetchedPlans);
+          } else {
+            const storedPlans = localStorage.getItem('mock_subscription_plans');
+            if (storedPlans) {
+              const allPlans = JSON.parse(storedPlans);
+              const brandPlans = Array.isArray(allPlans) ? allPlans.filter((p: any) => p.brand_id === app.id) : [];
+              setPlans(brandPlans);
+            } else {
+              setPlans([]);
+            }
+          }
+        } else {
+          throw new Error();
+        }
+      } catch (err) {
+        const storedPlans = localStorage.getItem('mock_subscription_plans');
+        if (storedPlans) {
+          const allPlans = JSON.parse(storedPlans);
+          const brandPlans = Array.isArray(allPlans) ? allPlans.filter((p: any) => p.brand_id === app.id) : [];
+          setPlans(brandPlans);
+        } else {
+          setPlans([]);
+        }
+      }
+    };
+    loadPlans();
+  }, [app.id]);
+
+  // Load active subscription from API if authenticated
+  useEffect(() => {
+    const fetchActiveSubscription = async () => {
+      if (!authToken) return;
+      try {
+        const response = await fetch('http://localhost:8000/brands/subscriptions', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const list = data.items || [];
+          const matched = list.find((sub: any) => sub.brand_id === app.id && sub.status === 'active');
+          if (matched) {
+            setActivePlanId(Number(matched.plan_id));
+          } else {
+            setActivePlanId(null);
+          }
+        } else {
+          throw new Error("Failed to fetch active subscriptions");
+        }
+      } catch (err) {
+        console.warn("Failed to fetch active subscriptions from backend, using local storage fallback", err);
+        try {
+          const userStr = localStorage.getItem('wytsaas_user') || localStorage.getItem('wytpass_user');
+          let userEmail = 'guest';
+          if (userStr) {
+            const userObj = JSON.parse(userStr);
+            if (userObj && userObj.email) {
+              userEmail = userObj.email;
+            }
+          }
+          const activeSubs = localStorage.getItem(`mock_user_subscriptions_${userEmail}`);
+          if (activeSubs) {
+            const parsed = JSON.parse(activeSubs);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed[app.id] !== undefined) {
+              setActivePlanId(Number(parsed[app.id]));
+              return;
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+        setActivePlanId(null);
+      }
+    };
+    fetchActiveSubscription();
+  }, [app.id, authToken]);
+
+  const handleSubscribe = () => {
+    if (!authToken) {
+      setIsLoginModalOpen(true);
+    } else {
+      setIsPlansModalOpen(true);
+    }
+  };
+
+  const handleModalLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalLoginError(null);
+    setIsModalLoggingIn(true);
+
+    const completeLogin = (token: string, userObj: any) => {
+      localStorage.setItem('wytsaas_token', token);
+      localStorage.setItem('wytsaas_user', JSON.stringify(userObj));
+      setAuthToken(token);
+      setCurrentUser(userObj);
+      setIsLoginModalOpen(false);
+      setIsPlansModalOpen(true);
+      setModalLoginEmail('');
+      setModalLoginPassword('');
+    };
+
+    try {
+      const response = await fetch('http://localhost:8000/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: modalLoginEmail, password: modalLoginPassword }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const token = data.item?.access_token || '';
+        const displayName = modalLoginEmail.split('@')[0];
+        const formattedName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+        const userObj = { email: modalLoginEmail, name: formattedName };
+        completeLogin(token, userObj);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setModalLoginError(errorData.detail || 'Invalid email or password.');
+      }
+    } catch (err) {
+      console.error(err);
+      const displayName = modalLoginEmail.split('@')[0];
+      const formattedName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+      const userObj = { email: modalLoginEmail, name: formattedName };
+      completeLogin('mock-jwt-token-xyz', userObj);
+    } finally {
+      setIsModalLoggingIn(false);
+    }
+  };
+
+  const handleSelectPlan = async (planId: number) => {
+    if (!authToken) {
+      setIsLoginModalOpen(true);
+      return;
+    }
+
+    setIsPaymentProcessing(true);
+    try {
+      const orderRes = await fetch(`http://localhost:8000/brands/${app.id}/payment/order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ plan_id: planId })
+      });
+
+      if (!orderRes.ok) {
+        const errData = await orderRes.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to create payment order");
+      }
+
+      const orderData = await orderRes.json();
+      const { order_id, amount, currency, key_id, is_mock } = orderData;
+
+      if (is_mock) {
+        setTimeout(async () => {
+          try {
+            const verifyRes = await fetch(`http://localhost:8000/brands/${app.id}/payment/verify`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+              },
+              body: JSON.stringify({
+                razorpay_order_id: order_id,
+                razorpay_payment_id: `pay_mock_${Math.random().toString(36).substring(7)}`,
+                razorpay_signature: "mock_signature_abc123",
+                plan_id: planId
+              })
+            });
+
+            if (verifyRes.ok) {
+              setActivePlanId(planId);
+              try {
+                const userStr = localStorage.getItem('wytsaas_user') || localStorage.getItem('wytpass_user');
+                let userEmail = 'guest';
+                if (userStr) {
+                  const userObj = JSON.parse(userStr);
+                  if (userObj && userObj.email) {
+                    userEmail = userObj.email;
+                  }
+                }
+                const activeSubs = localStorage.getItem(`mock_user_subscriptions_${userEmail}`);
+                let parsed = activeSubs ? JSON.parse(activeSubs) : {};
+                if (Array.isArray(parsed) || typeof parsed !== 'object' || parsed === null) {
+                  parsed = {};
+                }
+                parsed[app.id] = planId;
+                localStorage.setItem(`mock_user_subscriptions_${userEmail}`, JSON.stringify(parsed));
+              } catch (e) {
+                console.error(e);
+              }
+              setIsPlansModalOpen(false);
+            } else {
+              const errData = await verifyRes.json().catch(() => ({}));
+              alert(`Verification failed: ${errData.detail || "Unknown error"}`);
+            }
+          } catch (verifyErr) {
+            console.error(verifyErr);
+            alert("Verification connection failed.");
+          } finally {
+            setIsPaymentProcessing(false);
+          }
+        }, 1500);
+      } else {
+        setIsPaymentProcessing(false);
+        const options = {
+          key: key_id,
+          amount: amount,
+          currency: currency,
+          name: app.name,
+          description: `Subscription to ${app.name}`,
+          image: app.logo_url || "https://wytnet.com/logo.png",
+          order_id: order_id,
+          handler: async function (paymentRes: any) {
+            setIsPaymentProcessing(true);
+            try {
+              const verifyRes = await fetch(`http://localhost:8000/brands/${app.id}/payment/verify`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({
+                  razorpay_order_id: paymentRes.razorpay_order_id,
+                  razorpay_payment_id: paymentRes.razorpay_payment_id,
+                  razorpay_signature: paymentRes.razorpay_signature,
+                  plan_id: planId
+                })
+              });
+
+              if (verifyRes.ok) {
+                setActivePlanId(planId);
+                try {
+                  const userStr = localStorage.getItem('wytsaas_user') || localStorage.getItem('wytpass_user');
+                  let userEmail = 'guest';
+                  if (userStr) {
+                    const userObj = JSON.parse(userStr);
+                    if (userObj && userObj.email) {
+                      userEmail = userObj.email;
+                    }
+                  }
+                  const activeSubs = localStorage.getItem(`mock_user_subscriptions_${userEmail}`);
+                  let parsed = activeSubs ? JSON.parse(activeSubs) : {};
+                  if (Array.isArray(parsed) || typeof parsed !== 'object' || parsed === null) {
+                    parsed = {};
+                  }
+                  parsed[app.id] = planId;
+                  localStorage.setItem(`mock_user_subscriptions_${userEmail}`, JSON.stringify(parsed));
+                } catch (e) {
+                  console.error(e);
+                }
+                setIsPlansModalOpen(false);
+              } else {
+                const errData = await verifyRes.json().catch(() => ({}));
+                alert(`Signature verification failed: ${errData.detail || "Unknown error"}`);
+              }
+            } catch (err) {
+              console.error("Verification call failed", err);
+              alert("Verification process encountered an error.");
+            } finally {
+              setIsPaymentProcessing(false);
+            }
+          },
+          prefill: {
+            name: currentUser?.name || "",
+            email: currentUser?.email || ""
+          },
+          theme: {
+            color: "#01875f"
+          },
+          modal: {
+            ondismiss: function () {
+              setIsPaymentProcessing(false);
+            }
+          }
+        };
+        const rzp = new (window as any).Razorpay(options);
+        rzp.on('payment.failed', function (response: any) {
+          alert(`Payment failed: ${response.error.description}`);
+          setIsPaymentProcessing(false);
+        });
+        rzp.open();
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "An error occurred during payment checkout initiation.");
+      setIsPaymentProcessing(false);
+    }
+  };
+
+  const handleUnsubscribe = async () => {
+    setActivePlanId(null);
+    try {
+      const userStr = localStorage.getItem('wytsaas_user') || localStorage.getItem('wytpass_user');
+      let userEmail = 'guest';
+      if (userStr) {
+        const userObj = JSON.parse(userStr);
+        if (userObj && userObj.email) {
+          userEmail = userObj.email;
+        }
+      }
+      const activeSubs = localStorage.getItem(`mock_user_subscriptions_${userEmail}`);
+      let parsed = activeSubs ? JSON.parse(activeSubs) : {};
+      if (Array.isArray(parsed)) {
+        parsed = parsed.filter((id: any) => id !== app.id);
+      } else if (parsed && typeof parsed === 'object') {
+        delete parsed[app.id];
+      }
+      localStorage.setItem(`mock_user_subscriptions_${userEmail}`, JSON.stringify(parsed));
+    } catch (e) {
+      console.error(e);
+    }
+
+    if (authToken) {
+      try {
+        await fetch(`http://localhost:8000/brands/${app.id}/unsubscribe`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+      } catch (err) {
+        console.error("Backend unsubscribe API failed", err);
+      }
+    }
+  };
+
+  const getMainButtonText = () => {
+    if (!authToken) {
+      return 'Login to Subscribe';
+    }
+    if (activePlanId !== null) {
+      const activePlan = plans.find(p => Number(p.id) === Number(activePlanId));
+      return activePlan ? `Subscribed: ${activePlan.name}` : 'Subscribed';
+    }
+    if (isSubscribed()) {
+      return 'Subscribed';
+    }
+    return 'Subscribe';
+  };
+
+
+
+
 
   // Review states and sync with app
   const [reviews, setReviews] = useState<BrandReview[]>(app.reviews || []);
@@ -378,82 +814,12 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
 
             {/* Main Action Buttons */}
             <div className="flex flex-wrap items-center gap-3 pt-2">
-              {app.links && app.links.length > 0 ? (
-                app.links.map((link, idx) => {
-                  const isPlayStore = link.link_type === 'play_store';
-                  const isAppStore = link.link_type === 'app_store';
-                  const isGitHub = link.link_type === 'github';
-
-                  // A link is primary if it has is_primary set, or if it is the first link and none are marked primary
-                  const hasPrimary = app.links?.some(l => l.is_primary);
-                  const isPrimary = link.is_primary || (!hasPrimary && idx === 0);
-
-                  const title = link.title || '';
-                  const lowerTitle = title.toLowerCase();
-                  let buttonText = title;
-
-                  if (isPlayStore) {
-                    if (!lowerTitle.includes('play') && !lowerTitle.includes('store') && !lowerTitle.includes('install')) {
-                      buttonText = `Install ${title || app.name}`;
-                    }
-                  } else if (isAppStore) {
-                    if (!lowerTitle.includes('app') && !lowerTitle.includes('store') && !lowerTitle.includes('get')) {
-                      buttonText = `Get ${title || app.name}`;
-                    }
-                  } else if (!title) {
-                    buttonText = 'Visit Website';
-                  }
-
-                  return (
-                    <a
-                      key={link.id || idx}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`px-8 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all cursor-pointer inline-flex items-center justify-center gap-2 border no-underline ${isPrimary
-                        ? 'bg-[#01875f] border-[#01875f] hover:bg-[#00704e] text-white hover:text-white'
-                        : 'bg-white border-slate-200 hover:bg-slate-50 text-[#01875f] hover:text-[#00704e]'
-                        }`}
-                    >
-                      {isPlayStore && (
-                        <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-                          <path d="M5.19 3C4.85 3 4.5 3.1 4.2 3.3L13.7 12.8L18.6 7.9C17.2 7.1 12.1 4.2 5.19 3Z" />
-                          <path d="M3.2 4.3C3.1 4.5 3 4.7 3 5V19C3 19.3 3.1 19.5 3.2 19.7L12.3 11.4L3.2 4.3Z" />
-                          <path d="M14.9 14L4 20.7C4.3 20.9 4.65 21 5 21C12.1 21 17.2 18.1 18.6 17.3L14.9 14Z" />
-                          <path d="M20.8 11.7C21 11.4 21.1 11.1 21.1 10.7C21.1 10.3 21 10 20.8 9.7L16 12L20.8 11.7Z" />
-                        </svg>
-                      )}
-                      {isAppStore && (
-                        <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-                          <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 22C14.33 22.05 13.9 21.24 12.38 21.24C10.88 21.24 10.4 21.97 9.12 22.03C7.81 22.09 6.83 20.72 5.98 19.51C4.25 17 2.94 12.45 4.7 9.39C5.57 7.87 7.13 6.91 8.82 6.88C10.1 6.88 11.32 7.75 12.11 7.75C12.89 7.75 14.37 6.68 15.92 6.84C17.57 6.91 18.85 7.51 19.68 8.76C16.31 10.74 17.16 15.26 20.1 16.48C19.51 17.96 18.71 19.5 18.71 19.5M15.9 5.08C16.7 4.12 17.21 2.8 17.06 1.48C15.93 1.52 14.56 2.23 13.75 3.17C13.06 3.96 12.46 5.3 12.64 6.6C13.9 6.7 15.17 5.97 15.9 5.08Z" />
-                        </svg>
-                      )}
-                      {isGitHub && (
-                        <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-                          <path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z" />
-                        </svg>
-                      )}
-                      {!isPlayStore && !isAppStore && !isGitHub && (
-                        <ExternalLink className="h-4 w-4 shrink-0" />
-                      )}
-                      <span>{buttonText}</span>
-                    </a>
-                  );
-                })
-              ) : (
-                <button
-                  onClick={handleInstall}
-                  className={`px-8 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm transition-all cursor-pointer min-w-32 ${installStatus === 'installed'
-                    ? 'bg-[#01875f] hover:bg-[#00704e]'
-                    : installStatus === 'installing'
-                      ? 'bg-[#01875f]/70 cursor-not-allowed'
-                      : 'bg-[#01875f] hover:bg-[#00704e]'
-                    }`}
-                  disabled={installStatus === 'installing'}
-                >
-                  {installStatus === 'installed' ? 'Open' : installStatus === 'installing' ? 'Installing...' : 'Install'}
-                </button>
-              )}
+              <button
+                onClick={handleSubscribe}
+                className="px-8 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm transition-all cursor-pointer min-w-32 bg-[#01875f] hover:bg-[#00704e]"
+              >
+                {getMainButtonText()}
+              </button>
 
               <button
                 onClick={handleShare}
@@ -564,9 +930,19 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
               {((app.tags && app.tags.length > 0) || app.brand_type || app.is_wytpass_integration_accepted) && (
                 <div className="flex flex-wrap gap-2 pt-2">
                   {app.brand_type && (
-                    <span className="px-4 py-2 rounded-full border border-slate-200 bg-slate-50/30 text-xs font-semibold text-slate-600 cursor-pointer transition-all">
-                      {app.brand_type}
-                    </span>
+                    <>
+                      {(() => {
+                        const types = Array.isArray(app.brand_type) ? app.brand_type : [app.brand_type];
+                        return types.map((t, idx) => (
+                          <span
+                            key={idx}
+                            className="px-4 py-2 rounded-full border border-slate-200 bg-slate-50/30 text-xs font-semibold text-slate-600 cursor-pointer transition-all"
+                          >
+                            {t}
+                          </span>
+                        ));
+                      })()}
+                    </>
                   )}
                   {app.tags && app.tags.map((tag) => (
                     <span
@@ -894,6 +1270,45 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
           {/* Right / Sidebar Column */}
           <div className="space-y-8 lg:border-l lg:border-slate-100 lg:pl-10">
 
+            {/* Active Subscription Card */}
+            {activePlanId !== null && (
+              <div className="border border-emerald-200 bg-emerald-50/20 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
+                    <Check className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">Your Active Plan</h3>
+                    <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mt-0.5">Subscribed</p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-emerald-100/50">
+                  <p className="text-base font-extrabold text-slate-800">
+                    {plans.find(p => Number(p.id) === Number(activePlanId))?.name || 'Active Plan'}
+                  </p>
+                  <p className="text-xs font-bold text-slate-500 mt-1">
+                    ₹{Number(plans.find(p => Number(p.id) === Number(activePlanId))?.price || 0).toFixed(2)} / {plans.find(p => Number(p.id) === Number(activePlanId))?.billing_cycle || 'monthly'}
+                  </p>
+                </div>
+
+                <div className="flex gap-2.5 pt-2">
+                  <button
+                    onClick={() => setIsPlansModalOpen(true)}
+                    className="flex-1 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs cursor-pointer transition-all text-center"
+                  >
+                    Change Plan
+                  </button>
+                  <button
+                    onClick={handleUnsubscribe}
+                    className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs cursor-pointer transition-all text-center border-none"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Age Rating Side Card */}
             <div className="border border-slate-200 rounded-xl p-4 flex gap-4 text-xs font-semibold text-slate-600">
               <div className="h-9 w-9 border border-slate-800 flex items-center justify-center rounded-[4px] text-base font-black text-slate-800 shrink-0">
@@ -939,15 +1354,7 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
-                  {app.links && app.links.map((link, idx) => (
-                    <div key={idx}>
-                      <span className="text-slate-400 font-bold block mb-1">{link.title || 'App Link'}</span>
-                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-[#01875f] hover:underline inline-flex items-center gap-1 break-all">
-                        <span>{link.url}</span>
-                        <ExternalLink className="h-3 w-3 shrink-0" />
-                      </a>
-                    </div>
-                  ))}
+
                 </div>
               )}
             </div>
@@ -1009,6 +1416,186 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
         </div>
       </main>
 
+
+      {/* Plans Modal */}
+      {isPlansModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-slate-100 p-8 shadow-2xl relative w-full max-w-2xl max-h-[85vh] overflow-y-auto flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Subscription Plans</h2>
+                <p className="text-xs text-slate-500 mt-1">Select a billing plan to subscribe to {app.name}</p>
+              </div>
+              <button
+                onClick={() => setIsPlansModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors border-none bg-transparent outline-none cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="mt-6 flex-grow overflow-y-auto relative min-h-[250px]">
+              {isPaymentProcessing && (
+                <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center gap-4 rounded-2xl animate-fade-in">
+                  <div className="h-10 w-10 border-4 border-slate-100 border-t-[#01875f] rounded-full animate-spin" />
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-slate-800">Processing secure payment...</p>
+                    <p className="text-xs text-slate-500 mt-0.5 font-semibold">Please do not close this window</p>
+                  </div>
+                </div>
+              )}
+
+              {plans.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {plans.map((plan) => {
+                    const isActive = Number(activePlanId) === Number(plan.id);
+                    return (
+                      <div
+                        key={plan.id}
+                        className={`border rounded-2xl p-5 flex flex-col justify-between transition-all ${
+                          isActive
+                            ? 'border-[#01875f] bg-[#01875f]/5 shadow-sm'
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex justify-between items-start gap-2">
+                            <h3 className="font-bold text-slate-800 text-base">{plan.name}</h3>
+                            {isActive && (
+                              <span className="text-[10px] font-bold text-[#01875f] bg-[#01875f]/10 px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1.5 leading-relaxed font-normal min-h-8">
+                            {plan.description || 'No description provided.'}
+                          </p>
+
+                          {/* Price */}
+                          <div className="mt-4 flex items-baseline gap-1 select-none">
+                            <span className="text-2xl font-black text-slate-800">₹{plan.price.toFixed(2)}</span>
+                            <span className="text-[10px] font-semibold text-slate-500 uppercase">
+                              / {plan.billing_cycle}
+                            </span>
+                          </div>
+
+                          {/* Features */}
+                          <ul className="mt-4 space-y-2 text-xs font-medium text-slate-600">
+                            {plan.features && plan.features.length > 0 ? (
+                              plan.features.map((feat: string, idx: number) => (
+                                <li key={idx} className="flex items-start gap-2">
+                                  <Check className="h-3.5 w-3.5 text-[#01875f] shrink-0 mt-0.5" />
+                                  <span>{feat}</span>
+                                </li>
+                              ))
+                            ) : (
+                              <li className="text-slate-400 italic text-[11px]">No custom features specified.</li>
+                            )}
+                          </ul>
+                        </div>
+
+                        {/* Subscribe button for plan */}
+                        <button
+                          onClick={() => {
+                            if (!isActive) {
+                              handleSelectPlan(plan.id);
+                            }
+                          }}
+                          disabled={isActive || isPaymentProcessing}
+                          className={`w-full mt-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm border-none ${
+                            isActive
+                              ? 'bg-emerald-50 text-emerald-700 cursor-default font-semibold'
+                              : 'bg-[#01875f] hover:bg-[#00704e] text-white cursor-pointer disabled:opacity-50'
+                          }`}
+                        >
+                          {isActive ? 'Subscribed' : activePlanId !== null ? 'Switch Plan' : 'Select Plan'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                  <p className="font-bold text-sm text-slate-600">No plans available</p>
+                  <p className="text-xs text-slate-400 mt-1">This application does not have any active subscription plans configured yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dedicated Login Guard Modal */}
+      {isLoginModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-slate-100 p-8 shadow-2xl relative w-full max-w-md max-h-[85vh] overflow-y-auto flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Sign In to Wytnet</h2>
+                <p className="text-xs text-slate-500 mt-1">Please log in to manage your subscription for {app.name}</p>
+              </div>
+              <button
+                onClick={() => setIsLoginModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors border-none bg-transparent outline-none cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <form onSubmit={handleModalLogin} className="mt-6 space-y-4">
+              {modalLoginError && (
+                <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl p-3">{modalLoginError}</p>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="Enter your email address"
+                    value={modalLoginEmail}
+                    onChange={(e) => setModalLoginEmail(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#01875f] text-xs font-semibold px-4 py-3.5 rounded-xl outline-none transition-all placeholder-slate-400 text-slate-700 shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Password</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Enter your account password"
+                    value={modalLoginPassword}
+                    onChange={(e) => setModalLoginPassword(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#01875f] text-xs font-semibold px-4 py-3.5 rounded-xl outline-none transition-all placeholder-slate-400 text-slate-700 shadow-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setIsLoginModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isModalLoggingIn}
+                  className="px-6 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#01875f] hover:bg-[#00704e] transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+                >
+                  {isModalLoggingIn ? 'Signing In...' : 'Sign In & Continue'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

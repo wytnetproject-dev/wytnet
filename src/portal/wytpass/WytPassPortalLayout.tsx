@@ -5,8 +5,6 @@ import Topbar from './TopbarPass';
 import LoginModalPass from './LoginModalPass';
 import WytPassDashboard from './WytPassDashboard';
 import BrandsCRUD from '../wytsaas/brand/BrandsCRUD';
-import BrandAssets from '../wytsaas/brand/BrandAssets';
-import SSOIntegration from '../wytsaas/brand/SSOIntegration';
 
 
 interface ProductLayoutProps {
@@ -68,10 +66,6 @@ export default function WytPassPortalLayout({ onSelectProduct }: ProductLayoutPr
             <div className="flex-grow flex flex-col overflow-hidden relative">
               {activeMenu === 'brand' ? (
                 <BrandsCRUD user={user} portalType="wytpass" />
-              ) : activeMenu === 'brand-assets' ? (
-                <BrandAssets user={user} portalType="wytpass" />
-              ) : activeMenu === 'sso-integration' ? (
-                <SSOIntegration user={user} portalType="wytpass" />
               ) : (
                 <WytPassDashboard user={user} />
               )}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, Palette, Images, KeyRound, CreditCard, ShieldCheck, ClipboardCheck, User, LayoutGrid, Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Palette, ShieldCheck, ClipboardCheck, User, LayoutGrid, Star } from 'lucide-react';
 import logoSm from '../../assets/logosm.png';
 
 interface SidebarProps {
@@ -28,9 +28,6 @@ export default function SidebarSaaS({
   const primaryMenuItems: MenuItem[] = [
     ...(userRole === 'developer' ? [
       { id: 'brand', label: 'Apps', icon: Palette },
-      { id: 'brand-assets', label: 'App Assets', icon: Images },
-      { id: 'sso-integration', label: 'SSO Integration', icon: KeyRound },
-      { id: 'brand-subscriptions', label: 'App Subscriptions', icon: CreditCard },
       { id: 'watchlist', label: 'Watchlist', icon: Star }
     ] : []),
     ...(userRole === 'wytsaas_admin' ? [

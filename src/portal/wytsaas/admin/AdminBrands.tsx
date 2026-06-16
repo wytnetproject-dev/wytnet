@@ -35,7 +35,7 @@ import {
 
 // Reuse existing sub-components from the brand folder
 import BrandTable from '../brand/BrandTable';
-import BrandDrawer from '../brand/BrandDrawer';
+import BrandForm from '../brand/BrandForm';
 
 interface AdminBrandsProps {
   user?: { email: string; name: string; role: string } | null;
@@ -55,8 +55,8 @@ export default function AdminBrands({ user, portalType }: AdminBrandsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSandbox, setIsSandbox] = useState(false);
 
-  // Modal/Drawer state
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  // View State: 'list' | 'create' | 'edit'
+  const [viewMode, setViewMode] = useState<'list' | 'create' | 'edit'>('list');
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
   const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
@@ -135,13 +135,13 @@ export default function AdminBrands({ user, portalType }: AdminBrandsProps) {
   const handleOpenCreate = () => {
     setEditingBrand(null);
     setFormError(null);
-    setIsDrawerOpen(true);
+    setViewMode('create');
   };
 
   const handleOpenEdit = (brand: Brand) => {
     setEditingBrand(brand);
     setFormError(null);
-    setIsDrawerOpen(true);
+    setViewMode('edit');
   };
 
   const handleDrawerSubmit = async (brandPayload: BrandCreateInput | BrandUpdateInput) => {
@@ -234,6 +234,34 @@ export default function AdminBrands({ user, portalType }: AdminBrandsProps) {
       }
     }
   };
+
+  if (viewMode !== 'list') {
+    return (
+      <Box className="flex-grow overflow-hidden h-full flex flex-col relative bg-[#f8fafc]">
+        <Snackbar
+          open={toastOpen}
+          autoHideDuration={4000}
+          onClose={() => setToastOpen(false)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <Alert onClose={() => setToastOpen(false)} severity={toastSeverity} sx={{ width: '100%' }}>
+            {toastMessage}
+          </Alert>
+        </Snackbar>
+
+        <BrandForm
+          onCancel={() => setViewMode('list')}
+          onSubmit={handleDrawerSubmit}
+          editingBrand={editingBrand}
+          primaryColor={primaryColor}
+          primaryHoverColor={primaryHoverColor}
+          formError={formError}
+          setFormError={setFormError}
+          isSandbox={isSandbox}
+        />
+      </Box>
+    );
+  }
 
   return (
     <Box className="flex-grow bg-[#f8fafc] overflow-y-auto px-8 py-6 select-none space-y-6">
@@ -392,18 +420,6 @@ export default function AdminBrands({ user, portalType }: AdminBrandsProps) {
           onDelete={handleOpenDelete}
         />
       </Paper>
-
-      {/* Drawer Dialog Form */}
-      <BrandDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        onSubmit={handleDrawerSubmit}
-        editingBrand={editingBrand}
-        primaryColor={primaryColor}
-        primaryHoverColor={primaryHoverColor}
-        formError={formError}
-        setFormError={setFormError}
-      />
 
       {/* Delete Confirmation */}
       <Dialog
