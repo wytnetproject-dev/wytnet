@@ -10,7 +10,8 @@ import {
   DialogActions,
   Alert,
   Snackbar,
-  Chip
+  Chip,
+  TextField
 } from '@mui/material';
 import {
   Plus,
@@ -30,7 +31,8 @@ import {
   fetchBrands,
   updateBrand,
   createBrand,
-  deleteBrand
+  deleteBrand,
+  actionFinalReview
 } from '@/api/wytsaas/brand';
 
 // Reuse existing sub-components from the brand folder
@@ -62,6 +64,11 @@ export default function AdminBrands({ user, portalType }: AdminBrandsProps) {
   const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
 
   const [formError, setFormError] = useState<string | null>(null);
+
+  const [isFinalReviewOpen, setIsFinalReviewOpen] = useState(false);
+  const [finalReviewBrand, setFinalReviewBrand] = useState<Brand | null>(null);
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
 
   // Toast alerts
   const [toastOpen, setToastOpen] = useState(false);
@@ -232,6 +239,57 @@ export default function AdminBrands({ user, portalType }: AdminBrandsProps) {
       } catch (err: any) {
         showToast(err.message || 'Failed to delete app from backend.', 'error');
       }
+    }
+  };
+
+  const handleOpenFinalReview = (brand: Brand) => {
+    setFinalReviewBrand(brand);
+    setReviewNotes('');
+    setIsFinalReviewOpen(true);
+  };
+
+  const handleFinalReviewAction = async (status: 'approved' | 'rejected') => {
+    if (!finalReviewBrand) return;
+
+    setIsSubmittingAction(true);
+    try {
+      if (isSandbox) {
+        // Sandbox update
+        const updatedList = brands.map((b) => {
+          if (b.id === finalReviewBrand.id) {
+            return {
+              ...b,
+              current_stage: status === 'approved' ? 'Onboarding Completed' : 'Final Review Rejected',
+              status: status === 'approved' ? 'Approved' : 'Rejected',
+              updated_at: new Date().toISOString()
+            };
+          }
+          return b;
+        });
+
+        localStorage.setItem('mock_brands', JSON.stringify(updatedList));
+        setBrands(updatedList);
+        showToast(`Final onboarding review ${status} successfully (Sandbox)`, 'success');
+      } else {
+        const token = getAuthToken();
+        if (!token) {
+          showToast('Authentication token missing. Please log in again.', 'error');
+          setIsSubmittingAction(false);
+          return;
+        }
+
+        const updated = await actionFinalReview(finalReviewBrand.id, status, reviewNotes, token);
+
+        // Update list
+        setBrands(brands.map((b) => (b.id === finalReviewBrand.id ? updated : b)));
+        showToast(`Final onboarding review ${status} successfully.`, 'success');
+      }
+      setIsFinalReviewOpen(false);
+      setFinalReviewBrand(null);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to submit review action.', 'error');
+    } finally {
+      setIsSubmittingAction(false);
     }
   };
 
@@ -418,6 +476,7 @@ export default function AdminBrands({ user, portalType }: AdminBrandsProps) {
           primaryColor={primaryColor}
           onEdit={handleOpenEdit}
           onDelete={handleOpenDelete}
+          onApproveFinalReview={handleOpenFinalReview}
         />
       </Paper>
 
@@ -475,6 +534,148 @@ export default function AdminBrands({ user, portalType }: AdminBrandsProps) {
             Confirm Delete
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* FINAL REVIEW DIALOG */}
+      <Dialog
+        open={isFinalReviewOpen}
+        onClose={() => !isSubmittingAction && setIsFinalReviewOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: '24px',
+              p: 1.5
+            }
+          }
+        }}
+      >
+        {finalReviewBrand && (
+          <>
+            <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 2, pb: 1 }}>
+              {finalReviewBrand.logo_url ? (
+                <img
+                  src={finalReviewBrand.logo_url}
+                  alt={finalReviewBrand.name}
+                  className="h-10 w-10 rounded-xl border border-slate-100 object-cover"
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-sm border border-slate-200">
+                  {finalReviewBrand.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <Typography sx={{ fontWeight: 'bold', color: '#1e293b', fontSize: '16px' }}>
+                  Verify Final Onboarding Approval
+                </Typography>
+                <Typography className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+                  {finalReviewBrand.name} • {finalReviewBrand.company_name || 'N/A'}
+                </Typography>
+              </div>
+            </DialogTitle>
+
+            <DialogContent sx={{ spaceY: 3, pt: 2 }}>
+              <Box className="space-y-4">
+                <Typography sx={{ fontSize: '13px', color: '#475569', lineHeight: 1.6, mt: 1 }}>
+                  Both WytPass SSO compliance and WytPayment SDK configurations have been successfully integrated and verified. Please confirm if this application is ready to complete onboarding and publish live.
+                </Typography>
+
+                <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-1.5">
+                  <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+                    <span>SSO Verification Status</span>
+                    <span className="text-emerald-600 font-extrabold uppercase">Approved</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+                    <span>Payment Verification Status</span>
+                    <span className="text-emerald-600 font-extrabold uppercase">Approved</span>
+                  </div>
+                </div>
+
+                {/* Notes Input Field */}
+                <Box className="space-y-1.5 pt-1">
+                  <Typography className="text-xs font-bold text-slate-600 mb-1">
+                    Auditor Review Decision Notes
+                  </Typography>
+                  <TextField
+                    multiline
+                    rows={3}
+                    fullWidth
+                    disabled={isSubmittingAction}
+                    placeholder="Enter review decision notes, feedback, or custom audit trails..."
+                    value={reviewNotes}
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        borderRadius: '12px',
+                        color: '#334155',
+                        '& fieldset': { borderColor: '#e2e8f0' },
+                        '&:hover fieldset': { borderColor: '#cbd5e1' },
+                        '&.Mui-focused fieldset': { borderColor: primaryColor }
+                      }
+                    }}
+                  />
+                </Box>
+              </Box>
+            </DialogContent>
+
+            <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+              <Button
+                disabled={isSubmittingAction}
+                onClick={() => setIsFinalReviewOpen(false)}
+                sx={{
+                  color: '#64748b',
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  borderRadius: '10px'
+                }}
+              >
+                Close
+              </Button>
+
+              <Button
+                disabled={isSubmittingAction}
+                onClick={() => handleFinalReviewAction('rejected')}
+                variant="outlined"
+                sx={{
+                  borderColor: '#ef4444',
+                  color: '#ef4444',
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  borderRadius: '10px',
+                  '&:hover': {
+                    borderColor: '#dc2626',
+                    bgcolor: '#fef2f2'
+                  }
+                }}
+              >
+                Reject Onboarding
+              </Button>
+
+              <Button
+                disabled={isSubmittingAction}
+                onClick={() => handleFinalReviewAction('approved')}
+                variant="contained"
+                sx={{
+                  bgcolor: primaryColor,
+                  color: 'white',
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  borderRadius: '10px',
+                  boxShadow: 'none',
+                  '&:hover': {
+                    bgcolor: primaryHoverColor,
+                    boxShadow: 'none'
+                  }
+                }}
+              >
+                Approve & Complete
+              </Button>
+            </DialogActions>
+          </>
+        )}
       </Dialog>
     </Box>
   );

@@ -8,18 +8,26 @@ import {
 import {
   RefreshCw,
   FolderOpen,
-  Trash2,
   ExternalLink
 } from 'lucide-react';
-import type { WatchlistItem } from '@/api/wytsaas/watchlist';
-import { fetchWatchlist, removeFromWatchlist } from '@/api/wytsaas/watchlist';
+import type { Brand } from '@/api/wytsaas/brand';
 
 interface UserWatchlistCardsProps {
   user?: { email: string; name: string; role: string } | null;
 }
 
+interface SubscriptionItem {
+  id: number;
+  user_id: string;
+  brand_id: number;
+  plan_id: number;
+  status: string;
+  subscribed_at: string;
+  brand?: Brand;
+}
+
 export default function UserWatchlistCards({ user: _user }: UserWatchlistCardsProps) {
-  const [items, setItems] = useState<WatchlistItem[]>([]);
+  const [items, setItems] = useState<SubscriptionItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Toast Alerts State
@@ -37,34 +45,109 @@ export default function UserWatchlistCards({ user: _user }: UserWatchlistCardsPr
     setToastOpen(true);
   };
 
-  const loadWatchlist = async () => {
+  const loadSubscriptions = async () => {
     setIsLoading(true);
     const token = getAuthToken();
+    const email = _user?.email || 'guest';
+
+    // 1. Try to fetch from the real backend endpoint if we have a valid token
+    if (token && token !== 'mock-jwt-token-wytsaas' && token !== 'mock-jwt-token-xyz') {
+      try {
+        const response = await fetch('http://localhost:8000/brands/subscriptions', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const activeOnly = (data.items || []).filter((item: any) => item.status === 'active' && item.brand);
+          if (activeOnly.length > 0) {
+            setItems(activeOnly);
+            setIsLoading(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Backend subscription fetch failed, checking fallback...', err);
+      }
+    }
+
+    // 2. Fallback / Mock Mode:
+    // Resolve brand details. Try to fetch all brands from the public backend endpoint first.
+    let allBrands: Brand[] = [];
     try {
-      const fetched = await fetchWatchlist(token);
-      setItems(fetched);
-    } catch (err: any) {
-      console.error('Failed to load watchlist', err);
-      showToast(err.message || 'Error fetching watchlist.', 'error');
+      const brandsResponse = await fetch('http://localhost:8000/brands/');
+      if (brandsResponse.ok) {
+        const brandsData = await brandsResponse.json();
+        allBrands = brandsData.items || [];
+      }
+    } catch (err) {
+      console.warn('Failed to fetch brands from public backend, falling back to local storage', err);
+    }
+
+    // Fall back to mock_brands in local storage if backend call didn't yield brands
+    if (allBrands.length === 0) {
+      try {
+        const storedBrands = localStorage.getItem('mock_brands');
+        allBrands = storedBrands ? JSON.parse(storedBrands) : [];
+      } catch (e) {
+        console.error('Failed to parse mock_brands', e);
+      }
+    }
+
+    // Load mock user subscriptions
+    try {
+      const activeSubsStr = localStorage.getItem(`mock_user_subscriptions_${email}`);
+      const activeSubs = activeSubsStr ? JSON.parse(activeSubsStr) : {};
+      
+      const subItems: SubscriptionItem[] = [];
+      let idCounter = 1;
+
+      if (Array.isArray(activeSubs)) {
+        for (const brandId of activeSubs) {
+          const bId = Number(brandId);
+          const brand = allBrands.find(b => b.id === bId);
+          if (brand) {
+            subItems.push({
+              id: idCounter++,
+              user_id: _user?.email || 'mock-user-uuid',
+              brand_id: bId,
+              plan_id: 1,
+              status: 'active',
+              subscribed_at: new Date().toISOString(),
+              brand
+            });
+          }
+        }
+      } else if (activeSubs && typeof activeSubs === 'object') {
+        for (const [brandIdStr, planId] of Object.entries(activeSubs)) {
+          const bId = Number(brandIdStr);
+          const brand = allBrands.find(b => b.id === bId);
+          if (brand) {
+            subItems.push({
+              id: idCounter++,
+              user_id: _user?.email || 'mock-user-uuid',
+              brand_id: bId,
+              plan_id: Number(planId),
+              status: 'active',
+              subscribed_at: new Date().toISOString(),
+              brand
+            });
+          }
+        }
+      }
+      setItems(subItems);
+    } catch (err) {
+      console.error('Failed to load mock subscriptions', err);
+      setItems([]);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadWatchlist();
-  }, []);
-
-  const handleRemove = async (brandId: number, brandName: string) => {
-    const token = getAuthToken();
-    try {
-      await removeFromWatchlist(brandId, token);
-      setItems(items.filter((item) => item.brand_id !== brandId));
-      showToast(`Successfully removed ${brandName} from watchlist`, 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to remove from watchlist.', 'error');
-    }
-  };
+    loadSubscriptions();
+  }, [_user]);
 
   return (
     <Box className="flex-grow bg-[#f8fafc] overflow-y-auto px-8 py-6 select-none space-y-6">
@@ -84,19 +167,19 @@ export default function UserWatchlistCards({ user: _user }: UserWatchlistCardsPr
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="text-[10px] font-bold text-slate-400 tracking-wider uppercase flex items-center gap-1.5">
-            Products / WytSaaS / Watchlist
+            Products / WytSaaS / Subscriptions
           </div>
           <h2 className="text-2xl font-extrabold text-wytnet-dark mt-1">
             My Apps
           </h2>
           <p className="text-xs font-semibold text-slate-500 mt-1">
-            A curated list of applications added to your personal watchlist for tracking and quick access.
+            A list of applications you have purchased or subscribed to for tracking and quick access.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           <button
-            onClick={loadWatchlist}
+            onClick={loadSubscriptions}
             className="flex items-center gap-2 px-4 py-2 border border-slate-200 bg-white hover:border-slate-300 text-slate-600 hover:text-wytnet-blue font-bold text-xs rounded-xl shadow-sm cursor-pointer transition-colors"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
@@ -105,22 +188,22 @@ export default function UserWatchlistCards({ user: _user }: UserWatchlistCardsPr
         </div>
       </div>
 
-      {/* Watchlist Cards Grid */}
+      {/* Subscriptions Cards Grid */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <CircularProgress size={36} sx={{ color: '#01875f' }} />
           <p className="text-slate-400 text-xs font-semibold mt-3">
-            Loading your watchlist...
+            Loading your subscriptions...
           </p>
         </div>
       ) : items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 bg-white border border-slate-100 rounded-[24px] shadow-sm">
           <FolderOpen className="h-12 w-12 text-slate-300 mb-4" />
           <h3 className="text-slate-600 font-extrabold text-base">
-            Your Watchlist is Empty
+            No Subscribed Apps Found
           </h3>
           <p className="text-slate-400 text-xs text-center mt-1.5 max-w-sm">
-            Visit the marketplace to discover applications and tap the "Add to wishlist" button to save them here.
+            Visit the marketplace to discover and subscribe to applications.
           </p>
         </div>
       ) : (
@@ -138,7 +221,7 @@ export default function UserWatchlistCards({ user: _user }: UserWatchlistCardsPr
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#01875f] to-emerald-400 opacity-80" />
 
                 <div>
-                  {/* Top row: Logo & Unwatch */}
+                  {/* Top row: Logo & Status Badge */}
                   <div className="flex items-start justify-between mb-4 mt-1">
                     <div className="h-12 w-12 rounded-xl overflow-hidden border border-slate-100 shadow-sm flex items-center justify-center bg-slate-50 shrink-0">
                       {brand.logo_url ? (
@@ -157,13 +240,13 @@ export default function UserWatchlistCards({ user: _user }: UserWatchlistCardsPr
                       )}
                     </div>
 
-                    <button
-                      onClick={() => handleRemove(brand.id, brand.name)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 cursor-pointer transition-colors border-none bg-transparent"
-                      title="Remove from Watchlist"
-                    >
-                      <Trash2 className="h-4.5 w-4.5" />
-                    </button>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      item.status === 'active' 
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}>
+                      {item.status.toUpperCase()}
+                    </span>
                   </div>
 
                   {/* App Name & Company */}
@@ -174,6 +257,37 @@ export default function UserWatchlistCards({ user: _user }: UserWatchlistCardsPr
                     {brand.company_name || 'Savemom Private Limited'}
                   </span>
 
+                  {/* External Links */}
+                  {brand.links && brand.links.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {brand.links.map((link, lIdx) => {
+                        let badgeStyle = "bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100";
+                        if (link.link_type === 'play_store') {
+                          badgeStyle = "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100";
+                        } else if (link.link_type === 'app_store') {
+                          badgeStyle = "bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100";
+                        } else if (link.link_type === 'github') {
+                          badgeStyle = "bg-slate-900 text-slate-100 border border-slate-800 hover:bg-slate-800";
+                        } else if (link.link_type === 'website') {
+                          badgeStyle = "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100";
+                        }
+
+                        return (
+                          <a
+                            key={lIdx}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9px] font-extrabold tracking-wide uppercase transition-all duration-200 no-underline ${badgeStyle}`}
+                          >
+                            <span>{link.title || link.link_type.replace('_', ' ')}</span>
+                            <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                          </a>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {/* Description */}
                   <p className="text-xs font-medium text-slate-500 line-clamp-3 mt-3 leading-relaxed">
                     {brand.short_description || 'No description available for this application node.'}
@@ -183,7 +297,7 @@ export default function UserWatchlistCards({ user: _user }: UserWatchlistCardsPr
                 {/* Footer buttons */}
                 <div className="mt-5 pt-4 border-t border-slate-50 flex items-center justify-between gap-3">
                   <div className="text-[10px] text-slate-400 font-semibold">
-                    Added: {new Date(item.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    Subscribed: {new Date(item.subscribed_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                   </div>
 
                   {brand.slug && (

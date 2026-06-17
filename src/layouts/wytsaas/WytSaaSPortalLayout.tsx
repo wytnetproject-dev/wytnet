@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
+
 import Sidebar from '@/layouts/wytsaas/SidebarSaaS';
 import Topbar from '@/layouts/wytsaas/TopbarSaaS';
 import WytSaaSDashboard from '@/custom-pages/wytsaas-dashboard/WytSaaSDashboard';
@@ -9,15 +8,17 @@ import LoginModalSaaS from '@/custom-pages/login/LoginModalSaaS';
 import BrandsCRUD from '@/custom-pages/brand/BrandsCRUD';
 import AdminBrands from '@/custom-pages/admin/AdminBrands';
 import WytPassApprovals from '@/custom-pages/admin/WytPassApprovals';
+import WytPaymentApprovals from '@/custom-pages/admin/WytPaymentApprovals';
 import MyAccountModal from '@/custom-pages/my-account/MyAccountModal';
 import WatchlistCRUD from '@/custom-pages/brand/WatchlistCRUD';
 import UserWatchlistCards from '@/custom-pages/brand/UserWatchlistCards';
+import UsersCRUD from '@/custom-pages/admin/UsersCRUD';
 
 interface ProductLayoutProps {
   onSelectProduct: (product: string) => void;
 }
 
-export default function WytSaaSPortalLayout({ onSelectProduct }: ProductLayoutProps) {
+export default function WytSaaSPortalLayout({ onSelectProduct: _onSelectProduct }: ProductLayoutProps) {
   // Authentication state for WytSaaS
   const [user, setUser] = useState<{ email: string; name: string; role: string } | null>(() => {
     const stored = localStorage.getItem('wytsaas_user');
@@ -103,11 +104,15 @@ export default function WytSaaSPortalLayout({ onSelectProduct }: ProductLayoutPr
                 <AdminBrands user={user} portalType="wytsaas" />
               ) : activeMenu === 'wytpass-approvals' ? (
                 <WytPassApprovals user={user} portalType="wytsaas" />
+              ) : activeMenu === 'wytpayment-approvals' ? (
+                <WytPaymentApprovals user={user} portalType="wytsaas" />
+              ) : activeMenu === 'users' ? (
+                <UsersCRUD user={user} />
               ) : activeMenu === 'my-account' ? (
                 <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 4, py: 3, userSelect: 'none' }}>
                   <MyAccountModal
                     isOpen={true}
-                    onClose={() => {}}
+                    onClose={() => { }}
                     onUpdateSuccess={handleUpdateSuccess}
                     isEmbedded={true}
                   />
@@ -120,55 +125,6 @@ export default function WytSaaSPortalLayout({ onSelectProduct }: ProductLayoutPr
         </>
       ) : (
         <Box sx={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 4, backgroundColor: '#f8fafc', position: 'relative', overflow: 'hidden' }}>
-          {/* Elegant Product selector tabs */}
-          <Box
-            sx={{
-              display: 'flex',
-              gap: 1,
-              p: 0.75,
-              backgroundColor: 'rgba(241, 245, 249, 0.8)',
-              backdropFilter: 'blur(4px)',
-              border: '1px solid rgba(226, 232, 240, 0.5)',
-              borderRadius: '16px',
-              mb: 3,
-              position: 'relative',
-              zIndex: 10,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-            }}
-            className="animate-fadeIn"
-          >
-            <Button
-              onClick={() => onSelectProduct('wytsaas')}
-              variant="contained"
-              sx={{
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                px: 2.5,
-                py: 1,
-                borderRadius: '12px',
-                textTransform: 'none',
-                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-              }}
-            >
-              WytSaaS Login
-            </Button>
-            <Button
-              onClick={() => onSelectProduct('wytpass')}
-              sx={{
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                px: 2.5,
-                py: 1,
-                borderRadius: '12px',
-                textTransform: 'none',
-                color: '#64748b',
-                '&:hover': { color: '#0f172a', backgroundColor: 'rgba(0,0,0,0.02)' },
-              }}
-            >
-              WytPass Login
-            </Button>
-          </Box>
-
           <LoginModalSaaS
             isOpen={true}
             onClose={() => { }}

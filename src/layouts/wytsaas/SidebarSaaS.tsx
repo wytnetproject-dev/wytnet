@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, Palette, ShieldCheck, ClipboardCheck, User, Star } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronLeft, ChevronRight, Palette, ShieldCheck, ClipboardCheck, User, Star, CreditCard } from 'lucide-react';
 import Box from '@mui/material/Box';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -31,6 +32,8 @@ export default function SidebarSaaS({
   onToggleMinimize,
   userRole,
 }: SidebarProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const isExpanded = !isMinimized || isHovered;
   const primaryMenuItems: MenuItem[] = [
     ...(userRole === 'developer' ? [
       { id: 'brand', label: 'Apps', icon: Palette },
@@ -38,7 +41,9 @@ export default function SidebarSaaS({
     ] : []),
     ...(userRole === 'wytsaas_admin' ? [
       { id: 'admin-brands', label: 'Admin Apps', icon: ShieldCheck },
-      { id: 'wytpass-approvals', label: 'WytPass Approvals', icon: ClipboardCheck }
+      { id: 'wytpass-approvals', label: 'WytPass Approvals', icon: ClipboardCheck },
+      { id: 'wytpayment-approvals', label: 'WytPayment Approvals', icon: CreditCard },
+      { id: 'users', label: 'Users', icon: User }
     ] : []),
     ...(userRole === 'user' ? [
       { id: 'user-watchlist', label: 'My Apps', icon: Star }
@@ -50,48 +55,65 @@ export default function SidebarSaaS({
       component="aside"
       sx={{
         width: isMinimized ? 80 : 256,
-        backgroundColor: '#ffffff',
-        borderRight: '1px solid #f1f5f9',
-        display: 'flex',
-        flexDirection: 'column',
         height: '100vh',
         flexShrink: 0,
-        color: '#475569',
-        userSelect: 'none',
         transition: 'width 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-        overflow: 'hidden',
+        position: 'relative',
       }}
+      onMouseEnter={() => isMinimized && setIsHovered(true)}
+      onMouseLeave={() => isMinimized && setIsHovered(false)}
     >
-      {/* Sidebar Header Logo */}
       <Box
         sx={{
-          py: 2.5,
-          borderBottom: '1px solid #f8fafc',
+          width: isExpanded ? 256 : 80,
+          height: '100vh',
+          backgroundColor: '#ffffff',
+          borderRight: '1px solid #f1f5f9',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: isMinimized ? 'center' : 'flex-start',
-          px: isMinimized ? 0 : 3,
-          height: 64,
+          flexDirection: 'column',
+          color: '#475569',
+          userSelect: 'none',
+          transition: 'width 300ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+          overflow: 'hidden',
+          ...(isMinimized && isHovered ? {
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            zIndex: 1100,
+            boxShadow: '0 8px 24px rgba(15, 23, 42, 0.12)',
+          } : {})
         }}
       >
-        {isMinimized ? (
-          <Box
-            sx={{
-              display: 'flex',
-              height: 32,
-              width: 32,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '8px',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-              overflow: 'hidden',
-              backgroundColor: '#ffffff',
-            }}
-          >
-            <img src={logoSm} alt="Wytnet Logo" className="h-6 w-6 object-contain rounded-lg" />
-          </Box>
-        ) : (
-          <Box sx={{ height: 32, display: 'flex', alignItems: 'center' }} className="animate-fadeIn">
+        {/* Sidebar Header Logo */}
+        <Box
+          sx={{
+            py: 2.5,
+            borderBottom: '1px solid #f8fafc',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: isExpanded ? 'flex-start' : 'center',
+            px: isExpanded ? 3 : 0,
+            height: 64,
+          }}
+        >
+          {!isExpanded ? (
+            <Box
+              sx={{
+                display: 'flex',
+                height: 32,
+                width: 32,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '8px',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                overflow: 'hidden',
+                backgroundColor: '#ffffff',
+              }}
+            >
+              <img src={logoSm} alt="Wytnet Logo" className="h-6 w-6 object-contain rounded-lg" />
+            </Box>
+          ) : (
+            <Box sx={{ height: 32, display: 'flex', alignItems: 'center' }} className="animate-fadeIn">
             <svg width="141" height="31" viewBox="0 0 141 31" fill="none" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink">
               <rect width="141" height="31" fill="url(#pattern0_1_856)" />
               <defs>
@@ -237,15 +259,15 @@ export default function SidebarSaaS({
       <Box
         sx={{
           borderTop: '1px solid #f8fafc',
-          p: isMinimized ? 2 : 2.5,
+          p: isExpanded ? 2.5 : 2,
           display: 'flex',
           flexDirection: 'column',
-          alignItems: isMinimized ? 'center' : 'stretch',
+          alignItems: isExpanded ? 'stretch' : 'center',
           gap: 1.5,
         }}
       >
         {/* Systems Health details */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isMinimized ? 'center' : 'flex-start' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isExpanded ? 'flex-start' : 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Box
               component="span"
@@ -257,7 +279,7 @@ export default function SidebarSaaS({
                 animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               }}
             />
-            {!isMinimized && (
+            {isExpanded && (
               <Typography variant="caption" sx={{ fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 SaaS Systems
               </Typography>
@@ -265,7 +287,7 @@ export default function SidebarSaaS({
           </Box>
           <Typography
             sx={{
-              fontSize: isMinimized ? '10px' : '1.25rem',
+              fontSize: isExpanded ? '1.25rem' : '10px',
               fontWeight: 800,
               color: '#0f172a',
               mt: 0.5,
@@ -297,16 +319,26 @@ export default function SidebarSaaS({
           }}
           title={isMinimized ? 'Expand Menu' : 'Collapse Menu'}
         >
-          {isMinimized ? (
+          {!isExpanded ? (
             <ChevronRight className="h-4 w-4" />
           ) : (
             <>
-              <ChevronLeft className="h-4 w-4" />
-              <Typography variant="caption" sx={{ fontWeight: 700 }}>Collapse Menu</Typography>
+              {isMinimized ? (
+                <>
+                  <ChevronRight className="h-4 w-4" />
+                  <Typography variant="caption" sx={{ fontWeight: 700 }}>Expand Menu</Typography>
+                </>
+              ) : (
+                <>
+                  <ChevronLeft className="h-4 w-4" />
+                  <Typography variant="caption" sx={{ fontWeight: 700 }}>Collapse Menu</Typography>
+                </>
+              )}
             </>
           )}
         </IconButton>
       </Box>
     </Box>
+  </Box>
   );
 }

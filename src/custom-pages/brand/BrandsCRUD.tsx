@@ -44,6 +44,7 @@ import BrandTable from './BrandTable';
 import BrandForm from './BrandForm';
 import BrandAssets from './BrandAssets';
 import SSOIntegration from './SSOIntegration';
+import PaymentIntegration from './PaymentIntegration';
 import BrandSubscriptions from '@/custom-pages/subscription/BrandSubscriptions';
 import BrandUsers from './BrandUsers';
 import BrandIntegrationSettings from './BrandIntegrationSettings';
@@ -72,7 +73,7 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
   // View State: 'list' | 'create' | 'edit' | 'details'
   const [viewMode, setViewMode] = useState<'list' | 'create' | 'edit' | 'details'>('list');
   const [selectedDetailBrand, setSelectedDetailBrand] = useState<Brand | null>(null);
-  const [detailTab, setDetailTab] = useState<'assets' | 'subscriptions' | 'sso' | 'users' | 'integration'>('assets');
+  const [detailTab, setDetailTab] = useState<'assets' | 'subscriptions' | 'sso' | 'payment' | 'users' | 'integration'>('assets');
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
   const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
@@ -421,12 +422,27 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
             <KeyRound className="h-3.5 w-3.5" />
             SSO Integration
           </button>
+          <button
+            onClick={() => setDetailTab('payment')}
+            className={`text-xs font-bold px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${detailTab === 'payment' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+              }`}
+          >
+            <CreditCard className="h-3.5 w-3.5" />
+            Payment Integration
+          </button>
         </div>
 
         {/* Tab Workspace content */}
         <div className="bg-white rounded-2xl border border-slate-100 flex flex-col p-6 shadow-sm">
           {detailTab === 'sso' ? (
             <SSOIntegration
+              user={user}
+              portalType={portalType}
+              brandId={selectedDetailBrand.id}
+              isEmbedded={true}
+            />
+          ) : detailTab === 'payment' ? (
+            <PaymentIntegration
               user={user}
               portalType={portalType}
               brandId={selectedDetailBrand.id}

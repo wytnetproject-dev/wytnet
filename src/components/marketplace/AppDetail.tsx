@@ -86,7 +86,7 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
           return parsed[app.id] !== undefined;
         }
       }
-    } catch {}
+    } catch { }
     return false;
   };
 
@@ -411,42 +411,7 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
     }
   };
 
-  const handleUnsubscribe = async () => {
-    setActivePlanId(null);
-    try {
-      const userStr = localStorage.getItem('wytsaas_user') || localStorage.getItem('wytpass_user');
-      let userEmail = 'guest';
-      if (userStr) {
-        const userObj = JSON.parse(userStr);
-        if (userObj && userObj.email) {
-          userEmail = userObj.email;
-        }
-      }
-      const activeSubs = localStorage.getItem(`mock_user_subscriptions_${userEmail}`);
-      let parsed = activeSubs ? JSON.parse(activeSubs) : {};
-      if (Array.isArray(parsed)) {
-        parsed = parsed.filter((id: any) => id !== app.id);
-      } else if (parsed && typeof parsed === 'object') {
-        delete parsed[app.id];
-      }
-      localStorage.setItem(`mock_user_subscriptions_${userEmail}`, JSON.stringify(parsed));
-    } catch (e) {
-      console.error(e);
-    }
 
-    if (authToken) {
-      try {
-        await fetch(`http://localhost:8000/brands/${app.id}/unsubscribe`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
-        });
-      } catch (err) {
-        console.error("Backend unsubscribe API failed", err);
-      }
-    }
-  };
 
   const getMainButtonText = () => {
     if (!authToken) {
@@ -540,7 +505,7 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
         console.warn("Native share failed, falling back to clipboard", err);
       }
     }
-    
+
     // Fallback: Copy to clipboard
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -710,7 +675,7 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
           ? `User ${r.user_id.slice(0, 6)}`
           : String(r.user_id);
       }
-      
+
       // Clean and format the display name beautifully
       if (authorName) {
         if (authorName.includes('@')) {
@@ -1291,12 +1256,7 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
                   >
                     Change Plan
                   </button>
-                  <button
-                    onClick={handleUnsubscribe}
-                    className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs cursor-pointer transition-all text-center border-none"
-                  >
-                    Cancel
-                  </button>
+
                 </div>
               </div>
             )}
@@ -1446,11 +1406,10 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
                     return (
                       <div
                         key={plan.id}
-                        className={`border rounded-2xl p-5 flex flex-col justify-between transition-all ${
-                          isActive
-                            ? 'border-[#01875f] bg-[#01875f]/5 shadow-sm'
-                            : 'border-slate-200 hover:border-slate-300'
-                        }`}
+                        className={`border rounded-2xl p-5 flex flex-col justify-between transition-all ${isActive
+                          ? 'border-[#01875f] bg-[#01875f]/5 shadow-sm'
+                          : 'border-slate-200 hover:border-slate-300'
+                          }`}
                       >
                         <div>
                           <div className="flex justify-between items-start gap-2">
@@ -1496,11 +1455,10 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
                             }
                           }}
                           disabled={isActive || isPaymentProcessing}
-                          className={`w-full mt-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm border-none ${
-                            isActive
-                              ? 'bg-emerald-50 text-emerald-700 cursor-default font-semibold'
-                              : 'bg-[#01875f] hover:bg-[#00704e] text-white cursor-pointer disabled:opacity-50'
-                          }`}
+                          className={`w-full mt-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm border-none ${isActive
+                            ? 'bg-emerald-50 text-emerald-700 cursor-default font-semibold'
+                            : 'bg-[#01875f] hover:bg-[#00704e] text-white cursor-pointer disabled:opacity-50'
+                            }`}
                         >
                           {isActive ? 'Subscribed' : activePlanId !== null ? 'Switch Plan' : 'Select Plan'}
                         </button>

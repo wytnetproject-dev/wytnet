@@ -16,6 +16,24 @@ export interface UserProfileUpdateInput {
   password?: string;
 }
 
+export interface UserCreateInput {
+  username: string;
+  email: string;
+  full_name: string | null;
+  password?: string;
+  role?: string;
+  is_active?: boolean;
+}
+
+export interface UserUpdateInput {
+  username?: string;
+  email?: string;
+  full_name?: string | null;
+  password?: string;
+  role?: string;
+  is_active?: boolean;
+}
+
 export interface ApiResponse<T> {
   item?: T;
   items?: T[];
@@ -49,3 +67,45 @@ export async function updateUserProfile(
   }
   return data.item;
 }
+
+/**
+ * List all users (admin operation).
+ */
+export async function listAllUsers(token: string): Promise<UserProfile[]> {
+  const data = await api.get<ApiResponse<UserProfile>>('/users/', token);
+  return data.items || [];
+}
+
+/**
+ * Create a new user (admin operation).
+ */
+export async function createNewUser(userData: UserCreateInput, token: string): Promise<UserProfile> {
+  const data = await api.post<ApiResponse<UserProfile>>('/users/', userData, token);
+  if (!data.item) {
+    throw new Error('Created user item not found in response');
+  }
+  return data.item;
+}
+
+/**
+ * Update an existing user's details (admin operation).
+ */
+export async function modifyUser(
+  userId: string,
+  userData: UserUpdateInput,
+  token: string
+): Promise<UserProfile> {
+  const data = await api.patch<ApiResponse<UserProfile>>(`/users/${userId}`, userData, token);
+  if (!data.item) {
+    throw new Error('Updated user item not found in response');
+  }
+  return data.item;
+}
+
+/**
+ * Delete a user account (admin operation).
+ */
+export async function removeUser(userId: string, token: string): Promise<void> {
+  await api.delete<void>(`/users/${userId}`, token);
+}
+

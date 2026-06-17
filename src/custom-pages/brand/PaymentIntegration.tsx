@@ -19,7 +19,7 @@ import {
 } from '@mui/material';
 import {
   Search,
-  KeyRound,
+  CreditCard,
   CheckCircle,
   AlertTriangle,
   XCircle,
@@ -30,10 +30,10 @@ import {
   ShieldCheck,
   Zap
 } from 'lucide-react';
-import type { Brand, BrandWhitePassReview } from '@/api/wytsaas/brand';
-import { fetchBrands, fetchWhitePassReview, submitWhitePassReview } from '@/api/wytsaas/brand';
+import type { Brand, BrandWytPaymentReview } from '@/api/wytsaas/brand';
+import { fetchBrands, fetchWytPaymentReview, submitWytPaymentReview } from '@/api/wytsaas/brand';
 
-interface SSOIntegrationProps {
+interface PaymentIntegrationProps {
   user?: { email: string; name: string; role: string } | null;
   portalType: 'wytsaas' | 'wytpass';
   brandId?: number;
@@ -42,7 +42,7 @@ interface SSOIntegrationProps {
 
 const DEFAULT_MOCK_BRANDS: Brand[] = [];
 
-export default function SSOIntegration({ user: _user, portalType, brandId, isEmbedded }: SSOIntegrationProps) {
+export default function PaymentIntegration({ user: _user, portalType, brandId, isEmbedded }: PaymentIntegrationProps) {
   // Theme styling depending on portalType
   const primaryColor = portalType === 'wytsaas' ? '#0066cc' : '#9333ea';
   const primaryHoverColor = portalType === 'wytsaas' ? '#0052a3' : '#7e22ce';
@@ -58,10 +58,10 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
 
   // Review & Checklist States
-  const [review, setReview] = useState<BrandWhitePassReview | null>(null);
-  const [sdkInstalled, setSdkInstalled] = useState(false);
-  const [callbackVerified, setCallbackVerified] = useState(false);
-  const [domainVerified, setDomainVerified] = useState(false);
+  const [review, setReview] = useState<BrandWytPaymentReview | null>(null);
+  const [apiKeysConfigured, setApiKeysConfigured] = useState(false);
+  const [webhookVerified, setWebhookVerified] = useState(false);
+  const [testPaymentCompleted, setTestPaymentCompleted] = useState(false);
 
   // Rejection simulation state
   const [isRejecting, setIsRejecting] = useState(false);
@@ -134,39 +134,39 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
       // Sandbox mode check
       const currentList = mockList || brands;
       const brandObj = currentList.find(b => b.id === brandId);
-      if (brandObj && brandObj.whitepass_review) {
-        setReview(brandObj.whitepass_review);
-        setSdkInstalled(brandObj.whitepass_review.sdk_installed);
-        setCallbackVerified(brandObj.whitepass_review.callback_verified);
-        setDomainVerified(brandObj.whitepass_review.domain_verified);
+      if (brandObj && brandObj.wytpayment_review) {
+        setReview(brandObj.wytpayment_review);
+        setApiKeysConfigured(brandObj.wytpayment_review.api_keys_configured);
+        setWebhookVerified(brandObj.wytpayment_review.webhook_verified);
+        setTestPaymentCompleted(brandObj.wytpayment_review.test_payment_completed);
       } else {
         setReview(null);
-        setSdkInstalled(false);
-        setCallbackVerified(false);
-        setDomainVerified(false);
+        setApiKeysConfigured(false);
+        setWebhookVerified(false);
+        setTestPaymentCompleted(false);
       }
     } else {
       // Actual API check
       const token = getAuthToken();
       if (!token) return;
       try {
-        const revStatus = await fetchWhitePassReview(brandId, token);
+        const revStatus = await fetchWytPaymentReview(brandId, token);
         setReview(revStatus);
         if (revStatus) {
-          setSdkInstalled(revStatus.sdk_installed);
-          setCallbackVerified(revStatus.callback_verified);
-          setDomainVerified(revStatus.domain_verified);
+          setApiKeysConfigured(revStatus.api_keys_configured);
+          setWebhookVerified(revStatus.webhook_verified);
+          setTestPaymentCompleted(revStatus.test_payment_completed);
         } else {
-          setSdkInstalled(false);
-          setCallbackVerified(false);
-          setDomainVerified(false);
+          setApiKeysConfigured(false);
+          setWebhookVerified(false);
+          setTestPaymentCompleted(false);
         }
       } catch (err) {
-        console.error('Failed to load whitepass review status from backend', err);
+        console.error('Failed to load wytpayment review status from backend', err);
         setReview(null);
-        setSdkInstalled(false);
-        setCallbackVerified(false);
-        setDomainVerified(false);
+        setApiKeysConfigured(false);
+        setWebhookVerified(false);
+        setTestPaymentCompleted(false);
       }
     }
   };
@@ -210,19 +210,19 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
     await loadReviewStatus(brand.id, isSandbox);
   };
 
-  // Submit SSO Checklist for review
+  // Submit WytPayment Checklist for review
   const handleSubmitReview = async () => {
     if (!selectedBrand) return;
 
     if (isSandbox) {
       const nowString = new Date().toISOString();
-      const mockReview: BrandWhitePassReview = {
+      const mockReview: BrandWytPaymentReview = {
         id: 1,
         brand_id: selectedBrand.id,
         integration_status: 'pending',
-        sdk_installed: sdkInstalled,
-        callback_verified: callbackVerified,
-        domain_verified: domainVerified,
+        api_keys_configured: apiKeysConfigured,
+        webhook_verified: webhookVerified,
+        test_payment_completed: testPaymentCompleted,
         review_notes: null,
         reviewed_at: null
       };
@@ -231,9 +231,9 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
         b.id === selectedBrand.id
           ? {
               ...b,
-              is_wytpass_integration_accepted: true,
-              current_stage: 'Waiting for WytPass Review',
-              whitepass_review: mockReview,
+              is_payment_integration_accepted: true,
+              current_stage: 'Waiting for WytPayment Review',
+              wytpayment_review: mockReview,
               updated_at: nowString
             }
           : b
@@ -243,7 +243,7 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
       setBrands(updatedList);
       setSelectedBrand(updatedList.find(b => b.id === selectedBrand.id) || null);
       setReview(mockReview);
-      showToast('Applied for WhitePass SSO Review (Sandbox).', 'success');
+      showToast('Applied for WytPayment Review (Sandbox).', 'success');
     } else {
       const token = getAuthToken();
       if (!token) {
@@ -253,24 +253,24 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
       setIsLoading(true);
       try {
         const payload = {
-          sdk_installed: sdkInstalled,
-          callback_verified: callbackVerified,
-          domain_verified: domainVerified
+          api_keys_configured: apiKeysConfigured,
+          webhook_verified: webhookVerified,
+          test_payment_completed: testPaymentCompleted
         };
-        const rev = await submitWhitePassReview(selectedBrand.id, payload, token);
+        const rev = await submitWytPaymentReview(selectedBrand.id, payload, token);
         setReview(rev);
         
         // Update selection and lists
         const updatedBrand = {
           ...selectedBrand,
-          is_wytpass_integration_accepted: true,
-          current_stage: 'whitepass_review',
-          whitepass_review: rev
+          is_payment_integration_accepted: true,
+          current_stage: 'payment_integration',
+          wytpayment_review: rev
         };
         setBrands(brands.map(b => b.id === selectedBrand.id ? updatedBrand : b));
         setSelectedBrand(updatedBrand);
         
-        showToast('WhitePass SSO Review request submitted to administrators.', 'success');
+        showToast('WytPayment Review request submitted to administrators.', 'success');
       } catch (err: any) {
         showToast(err.message || 'Failed to submit review.', 'error');
       } finally {
@@ -289,7 +289,7 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
     }
 
     const nowString = new Date().toISOString();
-    const mockReview: BrandWhitePassReview = {
+    const mockReview: BrandWytPaymentReview = {
       ...review,
       integration_status: status,
       review_notes: status === 'rejected' ? rejectNotes : null,
@@ -300,9 +300,9 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
       b.id === selectedBrand.id
         ? {
             ...b,
-            current_stage: status === 'approved' ? 'WhitePass Integration Completed' : 'Waiting for WytPass Review Rejected',
+            current_stage: status === 'approved' ? 'WytPayment Integration Completed' : 'Waiting for WytPayment Review Rejected',
             status: status === 'approved' ? b.status : 'Rejected',
-            whitepass_review: mockReview,
+            wytpayment_review: mockReview,
             updated_at: nowString
           }
         : b
@@ -314,11 +314,11 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
     setReview(mockReview);
     setIsRejecting(false);
     setRejectNotes('');
-    showToast(`SSO Review mock-updated to ${status.toUpperCase()}!`, 'success');
+    showToast(`Payment Review mock-updated to ${status.toUpperCase()}!`, 'success');
   };
 
   // Determine button state and check interactivity
-  const isSubmissionAllowed = sdkInstalled && callbackVerified && domainVerified;
+  const isSubmissionAllowed = apiKeysConfigured && webhookVerified && testPaymentCompleted;
   const isPending = review?.integration_status === 'pending';
   const isApproved = review?.integration_status === 'approved';
   const isRejected = review?.integration_status === 'rejected';
@@ -343,12 +343,12 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
           <div>
             <div className="text-[10px] font-bold text-slate-400 tracking-wider uppercase flex items-center gap-1.5">
-              Products / {portalType === 'wytsaas' ? 'WytSaaS' : 'WytPass'} / Authentication / <KeyRound className="h-3 w-3 inline" /> Developer
+              Products / {portalType === 'wytsaas' ? 'WytSaaS' : 'WytPass'} / Payments / <CreditCard className="h-3 w-3 inline" /> Developer
             </div>
             
             <div className="flex items-center gap-3 mt-1">
               <h2 className="text-2xl font-extrabold text-wytnet-dark">
-                WhitePass SSO Integration
+                WytPayment Integration
               </h2>
               {isSandbox ? (
                 <Chip
@@ -381,7 +381,7 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
               )}
             </div>
             <p className="text-xs font-semibold text-slate-500 mt-1">
-              Configure single sign-on parameters, track installation checklists, and submit SSO reviews.
+              Configure webhook endpoints, track checkout checklist, and request API verification.
             </p>
           </div>
 
@@ -428,7 +428,7 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
             flexShrink: 0
           }}
         >
-          FastAPI Backend is currently offline. You are interacting with the client-side sandbox container. SSO reviews will persist in localStorage.
+          FastAPI Backend is currently offline. You are interacting with the client-side sandbox container. Payment integration reviews will persist in localStorage.
         </Alert>
       )}
 
@@ -531,7 +531,7 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
           </Paper>
         )}
 
-        {/* Right column: Selected Brand SSO Verification dashboard */}
+        {/* Right column: Selected Brand WytPayment Verification dashboard */}
         <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           {selectedBrand ? (
             <Paper
@@ -549,10 +549,10 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
               {/* Header Info */}
               <Box sx={{ p: 3, borderBottom: '1px solid #f1f5f9' }}>
                 <Typography sx={{ fontWeight: 'black', fontSize: '15px', color: '#1e293b' }}>
-                  SSO Integration Dashboard: {selectedBrand.name}
+                  Payment Integration Dashboard: {selectedBrand.name}
                 </Typography>
                 <Typography sx={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold', mt: 0.5 }}>
-                  Ecosystem Integration Stage &bull; Current Pipeline: {selectedBrand.current_stage === 'brand_submission' ? 'APP SUBMISSION' : selectedBrand.current_stage.toUpperCase().replace('_', ' ')}
+                  Billing SDK Configuration Stage &bull; Current Pipeline: {selectedBrand.current_stage === 'brand_submission' ? 'APP SUBMISSION' : selectedBrand.current_stage.toUpperCase().replace('_', ' ')}
                 </Typography>
               </Box>
 
@@ -562,7 +562,7 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
                 {/* 1. Review Status Display Banner */}
                 <Box>
                   <Typography sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', mb: 2, textTransform: 'uppercase' }}>
-                    WhitePass SSO Review Status
+                    WytPayment Review Status
                   </Typography>
 
                   {isPending && (
@@ -571,7 +571,7 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
                       icon={<AlertTriangle className="h-5 w-5 text-amber-500 animate-pulse" />}
                       sx={{ borderRadius: '16px', border: '1px solid #fde68a', bgcolor: '#fffbeb', color: '#78350f', fontWeight: '600', fontSize: '12px' }}
                     >
-                      SSO Review Pending: Administrators are actively verifying your SSO installation checklist. Access endpoints are locked while reviews are underway.
+                      Payment Review Pending: Administrators are actively verifying your payment setup credentials and checkout parameters. Endpoint syncing configurations are locked during reviews.
                     </Alert>
                   )}
 
@@ -581,7 +581,7 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
                       icon={<CheckCircle className="h-5 w-5 text-emerald-500" />}
                       sx={{ borderRadius: '16px', border: '1px solid #a7f3d0', bgcolor: '#ecfdf5', color: '#065f46', fontWeight: '600', fontSize: '12px' }}
                     >
-                      SSO Verification Approved: WhitePass SSO verification matches all parameters. SSO is active for client logins.
+                      Payment Integration Approved: WytPayment verification is fully confirmed. Automated billing pipelines are live.
                     </Alert>
                   )}
 
@@ -591,7 +591,7 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
                       icon={<XCircle className="h-5 w-5 text-rose-500" />}
                       sx={{ borderRadius: '16px', border: '1px solid #fecaca', bgcolor: '#fff5f5', color: '#991b1b', fontWeight: '600', fontSize: '12px' }}
                     >
-                      SSO Verification Rejected: Rejection Notes: {review?.review_notes || 'No notes provided by auditor.'}. Please address these notes and submit a new request.
+                      Payment Integration Rejected: Review Notes: {review?.review_notes || 'No notes provided by auditor.'}. Please update required parameters and re-submit.
                     </Alert>
                   )}
 
@@ -601,7 +601,7 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
                       icon={<HelpCircle className="h-5 w-5 text-blue-500" />}
                       sx={{ borderRadius: '16px', border: '1px solid #bfdbfe', bgcolor: '#eff6ff', color: '#1e3a8a', fontWeight: '600', fontSize: '12px' }}
                     >
-                      Not Submitted: Please review the checklist below. Once SSO configuration is complete on your product backend, select all items and apply for administrative approval.
+                      Not Submitted: Please review the checklist below. Configure keys on your app workspace and run test payments, then apply for billing integration review.
                     </Alert>
                   )}
                 </Box>
@@ -611,24 +611,24 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
                 {/* 2. Developer Integration Checklist */}
                 <Box>
                   <Typography sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', mb: 2, textTransform: 'uppercase' }}>
-                    SSO Integration Checklist
+                    Payment Integration Checklist
                   </Typography>
 
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
                     {/* Item 1 */}
                     <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
                       <Checkbox
-                        checked={sdkInstalled}
-                        onChange={(e) => setSdkInstalled(e.target.checked)}
+                        checked={apiKeysConfigured}
+                        onChange={(e) => setApiKeysConfigured(e.target.checked)}
                         disabled={isFormLocked}
                         sx={{ color: primaryColor, '&.Mui-checked': { color: primaryColor }, p: 0.5 }}
                       />
                       <Box>
                         <Typography sx={{ fontWeight: 'bold', fontSize: '12.5px', color: isFormLocked ? '#94a3b8' : '#1e293b' }}>
-                          SSO SDK Installed in Client Application
+                          Payment API Credentials Configured
                         </Typography>
                         <Typography sx={{ fontSize: '11px', color: '#64748b', mt: 0.5, lineHeight: 1.5 }}>
-                          Confirm that your code bundle includes WytPass client headers and triggers login sessions targeting our auth server.
+                          Confirm that your payment token key parameters are successfully initialized in your environment parameters.
                         </Typography>
                       </Box>
                     </Box>
@@ -636,17 +636,17 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
                     {/* Item 2 */}
                     <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
                       <Checkbox
-                        checked={callbackVerified}
-                        onChange={(e) => setCallbackVerified(e.target.checked)}
+                        checked={webhookVerified}
+                        onChange={(e) => setWebhookVerified(e.target.checked)}
                         disabled={isFormLocked}
                         sx={{ color: primaryColor, '&.Mui-checked': { color: primaryColor }, p: 0.5 }}
                       />
                       <Box>
                         <Typography sx={{ fontWeight: 'bold', fontSize: '12.5px', color: isFormLocked ? '#94a3b8' : '#1e293b' }}>
-                          Callback URL Endpoint Setup & Verified
+                          Sync Webhook Secret Verification Setup
                         </Typography>
                         <Typography sx={{ fontSize: '11px', color: '#64748b', mt: 0.5, lineHeight: 1.5 }}>
-                          Verify that redirect URIs correspond to approved redirect rules and return valid OAuth authentication headers during test requests.
+                          Verify that the billing webhooks are setup and signatures are successfully validated using WytPayment secret parameters.
                         </Typography>
                       </Box>
                     </Box>
@@ -654,17 +654,17 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
                     {/* Item 3 */}
                     <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
                       <Checkbox
-                        checked={domainVerified}
-                        onChange={(e) => setDomainVerified(e.target.checked)}
+                        checked={testPaymentCompleted}
+                        onChange={(e) => setTestPaymentCompleted(e.target.checked)}
                         disabled={isFormLocked}
                         sx={{ color: primaryColor, '&.Mui-checked': { color: primaryColor }, p: 0.5 }}
                       />
                       <Box>
                         <Typography sx={{ fontWeight: 'bold', fontSize: '12.5px', color: isFormLocked ? '#94a3b8' : '#1e293b' }}>
-                          Authorization Domains Verified
+                          Trial Mock Payment Completed
                         </Typography>
                         <Typography sx={{ fontSize: '11px', color: '#64748b', mt: 0.5, lineHeight: 1.5 }}>
-                          DNS domains matching authentication callback routes are validated and verified against our whitelist records.
+                          Trigger a test purchase callback using the sandbox payment card details to verify account provisioning.
                         </Typography>
                       </Box>
                     </Box>
@@ -679,11 +679,11 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <Zap className="h-4.5 w-4.5 text-pink-500 animate-pulse" />
                         <Typography sx={{ fontWeight: 'black', fontSize: '12px', color: '#9d174d', textTransform: 'uppercase' }}>
-                          Sandbox Simulator: Administrator Review Console
+                          Sandbox Simulator: WytPayment Admin Panel
                         </Typography>
                       </Box>
                       <Typography sx={{ fontSize: '11px', color: '#9d174d', mb: 2, lineHeight: 1.5 }}>
-                        Since you are in Sandbox Mode, there are no live admin accounts to verify this SSO request. Use this simulator console to approve or reject the current SSO review submission.
+                        Since you are in Sandbox Mode, there are no live admin reviewers to approve this WytPayment request. Use this mock panel to update review status.
                       </Typography>
 
                       {!isRejecting ? (
@@ -728,7 +728,7 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                           <TextField
                             label="Rejection Reason"
-                            placeholder="Enter mock rejection reasons..."
+                            placeholder="Enter mock rejection notes..."
                             size="small"
                             fullWidth
                             value={rejectNotes}
@@ -789,9 +789,9 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
                       color: '#94a3b8'
                     }
                   }}
-                  startIcon={<KeyRound className="h-4 w-4" />}
+                  startIcon={<CreditCard className="h-4 w-4" />}
                 >
-                  {isPending ? 'Under Admin Review' : isApproved ? 'SSO Review Approved' : 'Submit for SSO Review'}
+                  {isPending ? 'Under Admin Review' : isApproved ? 'Payment Review Approved' : 'Submit for Payment Review'}
                 </Button>
               </Box>
             </Paper>
@@ -803,23 +803,19 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
                 borderRadius: '20px',
                 border: '1px solid #f1f5f9',
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 p: 6,
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.005)',
-                bgcolor: '#fff'
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.005)'
               }}
             >
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', maxWidth: 360 }}>
-                <Box sx={{ width: 64, height: 64, borderRadius: '20px', bgcolor: selectionBgColor, display: 'flex', alignItems: 'center', justifyCenter: 'center', mb: 3, pl: 2, pt: 2 }}>
-                  <KeyRound className="h-7 w-7" style={{ color: primaryColor }} />
-                </Box>
-                <Typography sx={{ fontWeight: 'black', fontSize: '15px', color: '#1e293b', mb: 1 }}>
-                  Select an App to Manage SSO
+              <Box sx={{ textAlign: 'center', maxWidth: 320 }}>
+                <CreditCard className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                <Typography sx={{ fontWeight: 'bold', color: '#475569', fontSize: '14px' }}>
+                  No App Selected
                 </Typography>
-                <Typography sx={{ fontSize: '12px', color: '#64748b', lineHeight: 1.625 }}>
-                  Choose an app from the list on the left to display its WhitePass SSO integration checklists and review progress.
+                <Typography sx={{ color: '#64748b', fontSize: '11px', mt: 0.5, lineHeight: 1.5 }}>
+                  Select one of your registered applications from the left registry panel to manage your WytPayment integration pipeline.
                 </Typography>
               </Box>
             </Paper>

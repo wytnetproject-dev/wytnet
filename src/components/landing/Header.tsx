@@ -5,6 +5,11 @@ import { IconButton, Badge } from '@mui/material';
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentHash, setCurrentHash] = useState(() => window.location.hash);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    const hasSaaS = !!localStorage.getItem('wytsaas_user');
+    const hasPass = !!localStorage.getItem('wytpass_user');
+    return hasSaaS || hasPass;
+  });
 
   useEffect(() => {
     const handleHash = () => {
@@ -12,6 +17,16 @@ export default function Header() {
     };
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
+  useEffect(() => {
+    const checkLoginStatus = () => {
+      const hasSaaS = !!localStorage.getItem('wytsaas_user');
+      const hasPass = !!localStorage.getItem('wytpass_user');
+      setIsLoggedIn(hasSaaS || hasPass);
+    };
+    window.addEventListener('storage', checkLoginStatus);
+    return () => window.removeEventListener('storage', checkLoginStatus);
   }, []);
 
   return (
@@ -82,7 +97,7 @@ export default function Header() {
             href="#portal"
             className="hidden sm:inline-flex items-center justify-center rounded-full bg-wytnet-blue px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-wytnet-blue/95 hover:shadow-md hover:-translate-y-[1px] active:translate-y-0"
           >
-            Start Free
+            {isLoggedIn ? 'Dashboard' : 'Start Free'}
           </a>
 
           {/* Mobile Hamburguer trigger */}
@@ -121,7 +136,7 @@ export default function Header() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex w-full items-center justify-center rounded-full bg-wytnet-blue py-3 text-sm font-semibold text-white transition-all hover:bg-wytnet-blue/95"
               >
-                Start Free
+                {isLoggedIn ? 'Dashboard' : 'Start Free'}
               </a>
             </div>
           </div>

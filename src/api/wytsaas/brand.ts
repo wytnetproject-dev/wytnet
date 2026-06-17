@@ -31,6 +31,17 @@ export interface BrandWhitePassReview {
   reviewed_at?: string | null;
 }
 
+export interface BrandWytPaymentReview {
+  id: number;
+  brand_id: number;
+  integration_status: 'pending' | 'approved' | 'rejected';
+  api_keys_configured: boolean;
+  webhook_verified: boolean;
+  test_payment_completed: boolean;
+  review_notes?: string | null;
+  reviewed_at?: string | null;
+}
+
 export interface BrandReview {
   id?: number;
   brand_id?: number;
@@ -65,6 +76,7 @@ export interface Brand {
   tags?: BrandTag[];
   media?: BrandMedia[];
   whitepass_review?: BrandWhitePassReview | null;
+  wytpayment_review?: BrandWytPaymentReview | null;
   reviews?: BrandReview[];
 }
 
@@ -213,6 +225,74 @@ export async function actionWhitePassReview(
   }, token);
   if (!resData.item) {
     throw new Error('Review status not found in response');
+  }
+  return resData.item;
+}
+
+/**
+ * Submit brand for WytPayment review.
+ */
+export async function submitWytPaymentReview(
+  brandId: number,
+  data: { api_keys_configured: boolean; webhook_verified: boolean; test_payment_completed: boolean },
+  token: string
+): Promise<BrandWytPaymentReview> {
+  const resData = await api.post<ApiResponse<BrandWytPaymentReview>>(`/brands/${brandId}/wytpayment-review`, data, token);
+  if (!resData.item) {
+    throw new Error('Review status not found in response');
+  }
+  return resData.item;
+}
+
+/**
+ * Fetch WytPayment review status for a brand.
+ */
+export async function fetchWytPaymentReview(brandId: number, token: string): Promise<BrandWytPaymentReview | null> {
+  try {
+    const resData = await api.get<ApiResponse<BrandWytPaymentReview>>(`/brands/${brandId}/wytpayment-review`, token);
+    return resData.item || null;
+  } catch (err: any) {
+    if (err instanceof ApiError && err.status === 404) {
+      return null;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Submit action (Approve/Reject) on brand WytPayment review.
+ */
+export async function actionWytPaymentReview(
+  brandId: number,
+  status: 'approved' | 'rejected',
+  notes: string,
+  token: string
+): Promise<BrandWytPaymentReview> {
+  const resData = await api.post<ApiResponse<BrandWytPaymentReview>>(`/brands/${brandId}/wytpayment-review/action`, {
+    integration_status: status,
+    review_notes: notes,
+  }, token);
+  if (!resData.item) {
+    throw new Error('Review status not found in response');
+  }
+  return resData.item;
+}
+
+/**
+ * Submit action (Approve/Reject) on brand Final Review.
+ */
+export async function actionFinalReview(
+  brandId: number,
+  status: 'approved' | 'rejected',
+  notes: string,
+  token: string
+): Promise<Brand> {
+  const resData = await api.post<ApiResponse<Brand>>(`/brands/${brandId}/final-review/action`, {
+    integration_status: status,
+    review_notes: notes,
+  }, token);
+  if (!resData.item) {
+    throw new Error('Brand details not found in response');
   }
   return resData.item;
 }

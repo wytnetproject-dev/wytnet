@@ -119,6 +119,9 @@ export default function Marketplace({ currentHash }: MarketplaceProps) {
   // Filter apps
   const categories = ['All', 'AI & ML', 'Finance', 'Security', 'Utilities'];
   const filteredApps = apps.filter((app) => {
+    const matchesWorkflow = app.status?.toLowerCase() === 'approved' && app.current_stage === 'Onboarding Completed';
+    if (!matchesWorkflow) return false;
+
     const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (app.company_name && app.company_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (app.short_description && app.short_description.toLowerCase().includes(searchQuery.toLowerCase()));

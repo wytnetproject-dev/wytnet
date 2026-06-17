@@ -12,7 +12,7 @@ import {
   IconButton,
   Box
 } from '@mui/material';
-import { Edit2, Trash2, FolderOpen, Star, Eye } from 'lucide-react';
+import { Edit2, Trash2, FolderOpen, Star, Eye, ShieldCheck } from 'lucide-react';
 import type { Brand } from '@/api/wytsaas/brand';
 
 interface BrandTableProps {
@@ -24,6 +24,7 @@ interface BrandTableProps {
   onViewDetails?: (brand: Brand) => void;
   watchlistIds?: number[];
   onToggleWatch?: (brandId: number) => void;
+  onApproveFinalReview?: (brand: Brand) => void;
 }
 
 export default function BrandTable({
@@ -34,11 +35,12 @@ export default function BrandTable({
   onDelete,
   onViewDetails,
   watchlistIds = [],
-  onToggleWatch = () => {}
+  onToggleWatch = () => {},
+  onApproveFinalReview
 }: BrandTableProps) {
   // Chip color utilities for stage/status
   const getStatusChipColor = (statusVal: string) => {
-    switch (statusVal) {
+    switch (statusVal.toLowerCase()) {
       case 'approved':
         return 'success';
       case 'pending':
@@ -257,6 +259,23 @@ export default function BrandTable({
                         }}
                       >
                         <Eye className="h-4 w-4" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {onApproveFinalReview && brand.current_stage === 'WytPayment Integration Completed' && (
+                    <Tooltip title="Verify Final Onboarding">
+                      <IconButton
+                        onClick={() => onApproveFinalReview(brand)}
+                        size="small"
+                        sx={{
+                          color: '#10b981',
+                          '&:hover': {
+                            color: '#059669',
+                            bgcolor: '#ecfdf5'
+                          }
+                        }}
+                      >
+                        <ShieldCheck className="h-4 w-4" />
                       </IconButton>
                     </Tooltip>
                   )}

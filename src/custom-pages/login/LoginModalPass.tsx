@@ -71,7 +71,7 @@ export default function LoginModalPass({ isOpen, onClose, onLoginSuccess, isEmbe
   };
 
   const cardContent = (
-    <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/20 bg-white/90 p-8 shadow-[0_20px_50px_rgba(147,51,234,0.15)] backdrop-blur-xl animate-fadeIn">
+    <div className="relative w-full max-w-md max-h-full overflow-y-auto no-scrollbar rounded-3xl border border-white/20 bg-white/90 p-8 shadow-[0_20px_50px_rgba(147,51,234,0.15)] backdrop-blur-xl animate-fadeIn">
       
       <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-purple-600/10 blur-2xl" />
       <div className="absolute -left-20 -bottom-20 h-40 w-40 rounded-full bg-indigo-500/10 blur-2xl" />

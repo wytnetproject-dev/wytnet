@@ -31,25 +31,26 @@ import {
   XCircle,
   Clock,
   MessageSquare,
+  CreditCard,
   ExternalLink
 } from 'lucide-react';
 import type {
   Brand,
-  BrandWhitePassReview
+  BrandWytPaymentReview
 } from '@/api/wytsaas/brand';
 import {
   fetchBrands,
-  actionWhitePassReview
+  actionWytPaymentReview
 } from '@/api/wytsaas/brand';
 
-interface WytPassApprovalsProps {
+interface WytPaymentApprovalsProps {
   user?: { email: string; name: string; role: string } | null;
   portalType: 'wytsaas' | 'wytpass';
 }
 
-export default function WytPassApprovals({ user: _user, portalType }: WytPassApprovalsProps) {
-  const primaryColor = '#4f46e5'; // Deep Indigo for approvals/verification theme
-  const primaryHoverColor = '#4338ca';
+export default function WytPaymentApprovals({ user: _user, portalType }: WytPaymentApprovalsProps) {
+  const primaryColor = '#9333ea'; // Purple for billing approvals
+  const primaryHoverColor = '#7e22ce';
 
   // State
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -84,7 +85,6 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
     setIsLoading(true);
     try {
       const fetched = await fetchBrands();
-      // Ensure local mock brands exist if connected but list is empty
       setBrands(fetched);
       setIsSandbox(false);
     } catch (err) {
@@ -103,22 +103,22 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
     loadBrands();
   }, []);
 
-  // Filter brands based on tab, search query, and whitepass_review presence
+  // Filter brands based on tab, search query, and wytpayment_review presence
   useEffect(() => {
     const q = searchQuery.toLowerCase().trim();
-    // Filter only brands that have WhitePass reviews requested or performed
-    const withReview = brands.filter(b => b.whitepass_review !== null || b.current_stage === 'Waiting for WytPass Review' || b.current_stage === 'whitepass_review');
+    // Filter only brands that have WytPayment reviews requested or performed
+    const withReview = brands.filter(b => b.wytpayment_review !== null || b.current_stage === 'Waiting for WytPayment Review' || b.current_stage === 'payment_integration');
 
     let tabFiltered = withReview;
     if (activeTab === 0) {
       // Pending
-      tabFiltered = withReview.filter(b => b.whitepass_review?.integration_status === 'pending' || ((b.current_stage === 'Waiting for WytPass Review' || b.current_stage === 'whitepass_review') && b.whitepass_review?.integration_status !== 'approved' && b.whitepass_review?.integration_status !== 'rejected'));
+      tabFiltered = withReview.filter(b => b.wytpayment_review?.integration_status === 'pending' || ((b.current_stage === 'Waiting for WytPayment Review' || b.current_stage === 'payment_integration') && b.wytpayment_review?.integration_status !== 'approved' && b.wytpayment_review?.integration_status !== 'rejected'));
     } else if (activeTab === 1) {
       // Approved
-      tabFiltered = withReview.filter(b => b.whitepass_review?.integration_status === 'approved');
+      tabFiltered = withReview.filter(b => b.wytpayment_review?.integration_status === 'approved');
     } else if (activeTab === 2) {
       // Rejected
-      tabFiltered = withReview.filter(b => b.whitepass_review?.integration_status === 'rejected');
+      tabFiltered = withReview.filter(b => b.wytpayment_review?.integration_status === 'rejected');
     }
 
     if (!q) {
@@ -137,7 +137,7 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
 
   const handleOpenReview = (brand: Brand) => {
     setSelectedBrand(brand);
-    setReviewNotes(brand.whitepass_review?.review_notes || '');
+    setReviewNotes(brand.wytpayment_review?.review_notes || '');
     setIsReviewOpen(true);
   };
 
@@ -150,25 +150,25 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
         // Sandbox update
         const updatedList = brands.map((b) => {
           if (b.id === selectedBrand.id) {
-            const currentReview = b.whitepass_review || {
+            const currentReview = b.wytpayment_review || {
               id: Math.floor(Math.random() * 1000) + 200,
               brand_id: b.id,
-              sdk_installed: true,
-              callback_verified: true,
-              domain_verified: true
+              api_keys_configured: true,
+              webhook_verified: true,
+              test_payment_completed: true
             };
 
             return {
               ...b,
-              is_wytpass_integration_accepted: status === 'approved',
-              current_stage: status === 'approved' ? 'WhitePass Integration Completed' : 'Waiting for WytPass Review Rejected',
+              is_payment_integration_accepted: status === 'approved',
+              current_stage: status === 'approved' ? 'WytPayment Integration Completed' : 'Waiting for WytPayment Review Rejected',
               status: status === 'approved' ? b.status : 'Rejected',
-              whitepass_review: {
+              wytpayment_review: {
                 ...currentReview,
                 integration_status: status,
                 review_notes: reviewNotes,
                 reviewed_at: new Date().toISOString()
-              } as BrandWhitePassReview
+              } as BrandWytPaymentReview
             };
           }
           return b;
@@ -176,7 +176,7 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
 
         localStorage.setItem('mock_brands', JSON.stringify(updatedList));
         setBrands(updatedList);
-        showToast(`Verification ${status} successfully (Sandbox)`, 'success');
+        showToast(`Payment integration ${status} successfully (Sandbox)`, 'success');
       } else {
         const token = getAuthToken();
         if (!token) {
@@ -185,23 +185,23 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
           return;
         }
 
-        const updatedReview = await actionWhitePassReview(selectedBrand.id, status, reviewNotes, token);
+        const updatedReview = await actionWytPaymentReview(selectedBrand.id, status, reviewNotes, token);
 
         // Refresh local brand list
         const updatedList = brands.map((b) => {
           if (b.id === selectedBrand.id) {
             return {
               ...b,
-              is_wytpass_integration_accepted: status === 'approved',
-              current_stage: status === 'approved' ? 'WhitePass Integration Completed' : 'Waiting for WytPass Review Rejected',
+              is_payment_integration_accepted: status === 'approved',
+              current_stage: status === 'approved' ? 'WytPayment Integration Completed' : 'Waiting for WytPayment Review Rejected',
               status: status === 'approved' ? b.status : 'Rejected',
-              whitepass_review: updatedReview
+              wytpayment_review: updatedReview
             };
           }
           return b;
         });
         setBrands(updatedList);
-        showToast(`Verification ${status} successfully.`, 'success');
+        showToast(`Payment integration ${status} successfully.`, 'success');
       }
       setIsReviewOpen(false);
       setSelectedBrand(null);
@@ -229,12 +229,13 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="text-[10px] font-bold text-slate-400 tracking-wider uppercase flex items-center gap-1.5">
-            Products / {portalType === 'wytsaas' ? 'WytSaaS' : 'WytPass'} / Administration / <ClipboardCheck className="h-3 w-3 inline" /> WytPass Approvals
+            Products / {portalType === 'wytsaas' ? 'WytSaaS' : 'WytPass'} / Administration / <ClipboardCheck className="h-3 w-3 inline" /> WytPayment Approvals
           </div>
 
           <div className="flex items-center gap-3 mt-1">
-            <h2 className="text-2xl font-extrabold text-wytnet-dark">
-              WytPass Verification Approvals
+            <h2 className="text-2xl font-extrabold text-wytnet-dark flex items-center gap-2">
+              <CreditCard className="h-6 w-6 text-purple-600" />
+              <span>WytPayment Integration Approvals</span>
             </h2>
             {isSandbox ? (
               <Chip
@@ -267,7 +268,7 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
             )}
           </div>
           <p className="text-xs font-semibold text-slate-500 mt-1">
-            Review and approve developer requests to activate WytPass SSO. Verify SDK compliance, domain credentials, and callback endpoints.
+            Review and approve app payment integration requests. Verify API credentials, webhook endpoints, and sandbox checkout trials.
           </p>
         </div>
 
@@ -301,13 +302,13 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
           icon={<WifiOff className="h-4.5 w-4.5" />}
           sx={{
             borderRadius: '16px',
-            border: '1px solid #fef3c7',
-            bgcolor: '#fffbeb',
-            color: '#713f12',
+            border: '1px solid #fbcfe8',
+            bgcolor: '#fdf4ff',
+            color: '#701a75',
             fontWeight: '600',
             fontSize: '11px',
             '& .MuiAlert-icon': {
-              color: '#d97706'
+              color: '#d946ef'
             }
           }}
         >
@@ -350,8 +351,8 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
             }}
           >
             <Tab label="Pending Review" />
-            <Tab label="Approved Requests" />
-            <Tab label="Rejected Requests" />
+            <Tab label="Approved Integrations" />
+            <Tab label="Rejected Integrations" />
             <Tab label="All Submissions" />
           </Tabs>
 
@@ -359,7 +360,7 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
             <Search className="absolute left-3 top-5 h-4 w-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search request by brand or company..."
+              placeholder="Search request by app name or company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-[#f8fafc] border border-slate-100 hover:border-slate-200 focus:border-slate-300 text-xs font-semibold pl-10 pr-4 py-2.5 rounded-xl outline-none transition-all placeholder-slate-400 text-wytnet-dark"
@@ -372,9 +373,9 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
             <TableHead sx={{ bgcolor: '#f8fafc' }}>
               <TableRow>
                 <TableCell sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2 }}>Brand & Company</TableCell>
-                <TableCell sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2 }}>SDK Installed</TableCell>
-                <TableCell sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2 }}>Callback Endpoint</TableCell>
-                <TableCell sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2 }}>Domain Verified</TableCell>
+                <TableCell sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2 }}>API Keys Setup</TableCell>
+                <TableCell sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2 }}>Webhook Configured</TableCell>
+                <TableCell sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2 }}>Test Payment Completed</TableCell>
                 <TableCell sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2 }}>Status</TableCell>
                 <TableCell align="right" sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2, pr: 4 }}>Actions</TableCell>
               </TableRow>
@@ -391,12 +392,12 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
                 <TableRow>
                   <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
                     <ClipboardCheck className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                    <span className="text-xs font-semibold text-slate-400">No integration requests found matching this status.</span>
+                    <span className="text-xs font-semibold text-slate-400">No payment integration requests found matching this status.</span>
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredBrands.map((brand) => {
-                  const review = brand.whitepass_review;
+                  const review = brand.wytpayment_review;
                   const reviewStatus = review?.integration_status || 'pending';
 
                   return (
@@ -422,10 +423,10 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
                       </TableCell>
 
                       <TableCell sx={{ py: 3 }}>
-                        {review?.sdk_installed ? (
+                        {review?.api_keys_configured ? (
                           <div className="flex items-center gap-1.5 text-emerald-600 font-semibold text-xs">
                             <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
-                            <span>Installed</span>
+                            <span>Configured</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 text-slate-400 font-medium text-xs">
@@ -436,7 +437,7 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
                       </TableCell>
 
                       <TableCell sx={{ py: 3 }}>
-                        {review?.callback_verified ? (
+                        {review?.webhook_verified ? (
                           <div className="flex items-center gap-1.5 text-emerald-600 font-semibold text-xs">
                             <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
                             <span>Verified</span>
@@ -450,15 +451,15 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
                       </TableCell>
 
                       <TableCell sx={{ py: 3 }}>
-                        {review?.domain_verified ? (
+                        {review?.test_payment_completed ? (
                           <div className="flex items-center gap-1.5 text-emerald-600 font-semibold text-xs">
                             <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
-                            <span>Verified</span>
+                            <span>Completed</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 text-slate-400 font-medium text-xs">
                             <XCircle className="h-4.5 w-4.5 text-slate-300 shrink-0" />
-                            <span>Unverified</span>
+                            <span>Uncompleted</span>
                           </div>
                         )}
                       </TableCell>
@@ -571,7 +572,7 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
               )}
               <div>
                 <Typography sx={{ fontWeight: 'bold', color: '#1e293b', fontSize: '16px' }}>
-                  WytPass Integration Review
+                  WytPayment Integration Review
                 </Typography>
                 <Typography className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">
                   {selectedBrand.name} • {selectedBrand.company_name || 'N/A'}
@@ -583,45 +584,45 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
               <Box className="space-y-4">
                 {/* Integration Checklist Cards */}
                 <div className="grid grid-cols-3 gap-3">
-                  <div className={`p-3.5 rounded-xl border text-center ${selectedBrand.whitepass_review?.sdk_installed ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
+                  <div className={`p-3.5 rounded-xl border text-center ${selectedBrand.wytpayment_review?.api_keys_configured ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
                     <div className="flex justify-center mb-1">
-                      {selectedBrand.whitepass_review?.sdk_installed ? (
+                      {selectedBrand.wytpayment_review?.api_keys_configured ? (
                         <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                       ) : (
                         <XCircle className="h-5 w-5 text-slate-300" />
                       )}
                     </div>
-                    <div className="text-[10px] font-extrabold text-slate-500 uppercase">SDK Status</div>
-                    <div className={`text-xs font-bold mt-0.5 ${selectedBrand.whitepass_review?.sdk_installed ? 'text-emerald-700' : 'text-slate-500'}`}>
-                      {selectedBrand.whitepass_review?.sdk_installed ? 'Installed' : 'Missing'}
+                    <div className="text-[10px] font-extrabold text-slate-500 uppercase">API Credentials</div>
+                    <div className={`text-xs font-bold mt-0.5 ${selectedBrand.wytpayment_review?.api_keys_configured ? 'text-emerald-700' : 'text-slate-500'}`}>
+                      {selectedBrand.wytpayment_review?.api_keys_configured ? 'Configured' : 'Missing'}
                     </div>
                   </div>
 
-                  <div className={`p-3.5 rounded-xl border text-center ${selectedBrand.whitepass_review?.callback_verified ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
+                  <div className={`p-3.5 rounded-xl border text-center ${selectedBrand.wytpayment_review?.webhook_verified ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
                     <div className="flex justify-center mb-1">
-                      {selectedBrand.whitepass_review?.callback_verified ? (
+                      {selectedBrand.wytpayment_review?.webhook_verified ? (
                         <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                       ) : (
                         <XCircle className="h-5 w-5 text-slate-300" />
                       )}
                     </div>
-                    <div className="text-[10px] font-extrabold text-slate-500 uppercase">Callback Url</div>
-                    <div className={`text-xs font-bold mt-0.5 ${selectedBrand.whitepass_review?.callback_verified ? 'text-emerald-700' : 'text-slate-500'}`}>
-                      {selectedBrand.whitepass_review?.callback_verified ? 'Verified' : 'Unverified'}
+                    <div className="text-[10px] font-extrabold text-slate-500 uppercase">Webhook Secret</div>
+                    <div className={`text-xs font-bold mt-0.5 ${selectedBrand.wytpayment_review?.webhook_verified ? 'text-emerald-700' : 'text-slate-500'}`}>
+                      {selectedBrand.wytpayment_review?.webhook_verified ? 'Verified' : 'Unverified'}
                     </div>
                   </div>
 
-                  <div className={`p-3.5 rounded-xl border text-center ${selectedBrand.whitepass_review?.domain_verified ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
+                  <div className={`p-3.5 rounded-xl border text-center ${selectedBrand.wytpayment_review?.test_payment_completed ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
                     <div className="flex justify-center mb-1">
-                      {selectedBrand.whitepass_review?.domain_verified ? (
+                      {selectedBrand.wytpayment_review?.test_payment_completed ? (
                         <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                       ) : (
                         <XCircle className="h-5 w-5 text-slate-300" />
                       )}
                     </div>
-                    <div className="text-[10px] font-extrabold text-slate-500 uppercase">Domain Check</div>
-                    <div className={`text-xs font-bold mt-0.5 ${selectedBrand.whitepass_review?.domain_verified ? 'text-emerald-700' : 'text-slate-500'}`}>
-                      {selectedBrand.whitepass_review?.domain_verified ? 'Verified' : 'Unverified'}
+                    <div className="text-[10px] font-extrabold text-slate-500 uppercase">Test Payment</div>
+                    <div className={`text-xs font-bold mt-0.5 ${selectedBrand.wytpayment_review?.test_payment_completed ? 'text-emerald-700' : 'text-slate-500'}`}>
+                      {selectedBrand.wytpayment_review?.test_payment_completed ? 'Completed' : 'Uncompleted'}
                     </div>
                   </div>
                 </div>
@@ -634,7 +635,7 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
                   </div>
                   <div className="flex justify-between items-center text-xs font-bold text-slate-700">
                     <span>Verification Request Status</span>
-                    <span className="capitalize">{selectedBrand.whitepass_review?.integration_status || 'pending'}</span>
+                    <span className="capitalize">{selectedBrand.wytpayment_review?.integration_status || 'pending'}</span>
                   </div>
                 </div>
 
@@ -670,8 +671,8 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
                     multiline
                     rows={3}
                     fullWidth
-                    disabled={selectedBrand.whitepass_review?.integration_status !== 'pending'}
-                    placeholder="Enter review findings, callback confirmation notes, or detailed instructions if rejecting the integration request..."
+                    disabled={selectedBrand.wytpayment_review?.integration_status !== 'pending'}
+                    placeholder="Enter review findings, keys verification notes, or detailed instructions if rejecting the payment integration request..."
                     value={reviewNotes}
                     onChange={(e) => setReviewNotes(e.target.value)}
                     sx={{
@@ -688,12 +689,12 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
                   />
                 </Box>
 
-                {selectedBrand.whitepass_review?.integration_status !== 'pending' && (
+                {selectedBrand.wytpayment_review?.integration_status !== 'pending' && (
                   <Alert
-                    severity={selectedBrand.whitepass_review?.integration_status === 'approved' ? 'success' : 'error'}
+                    severity={selectedBrand.wytpayment_review?.integration_status === 'approved' ? 'success' : 'error'}
                     sx={{ borderRadius: '12px', fontSize: '11.5px', fontWeight: 'bold' }}
                   >
-                    This review request has already been finalized as <strong>{selectedBrand.whitepass_review?.integration_status.toUpperCase()}</strong>.
+                    This review request has already been finalized as <strong>{selectedBrand.wytpayment_review?.integration_status.toUpperCase()}</strong>.
                   </Alert>
                 )}
               </Box>
@@ -713,7 +714,7 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
                 Close
               </Button>
 
-              {selectedBrand.whitepass_review?.integration_status === 'pending' && (
+              {selectedBrand.wytpayment_review?.integration_status === 'pending' && (
                 <>
                   <Button
                     disabled={isSubmittingAction}

@@ -57,8 +57,8 @@ export default function BrandForm({
   const [wytpassAccepted, setWytpassAccepted] = useState(false);
   const [paymentAccepted, setPaymentAccepted] = useState(false);
   const [featured, setFeatured] = useState(false);
-  const [status, setStatus] = useState('pending');
-  const [stage, setStage] = useState('brand_submission');
+  const [status, setStatus] = useState('Pending');
+  const [stage, setStage] = useState('Brand Submitted');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [playStoreUrl, setPlayStoreUrl] = useState('');
@@ -154,8 +154,8 @@ export default function BrandForm({
       setWytpassAccepted(false);
       setPaymentAccepted(false);
       setFeatured(false);
-      setStatus('pending');
-      setStage('brand_submission');
+      setStatus('Pending');
+      setStage('Brand Submitted');
       setWebsiteUrl('');
       setPlayStoreUrl('');
       setAppStoreUrl('');
