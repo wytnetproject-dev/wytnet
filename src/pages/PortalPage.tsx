@@ -1,5 +1,13 @@
-import PortalLayout from '@/layouts/PortalLayout';
+import WytSaaSPortalLayout from '@/layouts/wytsaas/WytSaaSPortalLayout';
+import WytPassPortalLayout from '@/layouts/wytpass/WytPassPortalLayout';
 
-export default function PortalPage() {
-  return <PortalLayout />;
+interface PortalPageProps {
+  product: 'wytsaas' | 'wytpass';
+}
+
+export default function PortalPage({ product }: PortalPageProps) {
+  if (product === 'wytpass') {
+    return <WytPassPortalLayout onSelectProduct={() => { }} />;
+  }
+  return <WytSaaSPortalLayout onSelectProduct={() => { }} />;
 }

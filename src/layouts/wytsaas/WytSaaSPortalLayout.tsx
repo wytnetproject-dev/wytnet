@@ -124,14 +124,12 @@ export default function WytSaaSPortalLayout({ onSelectProduct: _onSelectProduct 
           </Box>
         </>
       ) : (
-        <Box sx={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 4, backgroundColor: '#f8fafc', position: 'relative', overflow: 'hidden' }}>
-          <LoginModalSaaS
-            isOpen={true}
-            onClose={() => { }}
-            onLoginSuccess={handleLoginSuccess}
-            isEmbedded={true}
-          />
-        </Box>
+        <LoginModalSaaS
+          isOpen={true}
+          onClose={() => { }}
+          onLoginSuccess={handleLoginSuccess}
+          isEmbedded={true}
+        />
       )}
     </Box>
   );

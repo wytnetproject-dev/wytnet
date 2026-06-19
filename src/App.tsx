@@ -31,7 +31,7 @@ const theme = createTheme({
 });
 
 function App() {
-  const [view, setView] = useState<'landing' | 'portal'>('landing');
+  const [view, setView] = useState<'landing' | 'portal' | 'wytpass'>('landing');
   const [currentHash, setCurrentHash] = useState('');
 
   // Unified native hash-routing handler
@@ -40,6 +40,8 @@ function App() {
       setCurrentHash(window.location.hash);
       if (window.location.hash === '#portal') {
         setView('portal');
+      } else if (window.location.hash === '#wytpass') {
+        setView('wytpass');
       } else {
         setView('landing');
       }
@@ -54,7 +56,9 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       {view === 'portal' ? (
-        <PortalPage />
+        <PortalPage product="wytsaas" />
+      ) : view === 'wytpass' ? (
+        <PortalPage product="wytpass" />
       ) : currentHash.startsWith('#marketplace') ? (
         <MarketplacePage currentHash={currentHash} />
       ) : (

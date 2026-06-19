@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Sidebar from '@/layouts/wytpass/SidebarPass';
 import Topbar from '@/layouts/wytpass/TopbarPass';
 import LoginModalPass from '@/custom-pages/login/LoginModalPass';
@@ -83,65 +82,12 @@ export default function WytPassPortalLayout({ onSelectProduct }: ProductLayoutPr
           </Box>
         </>
       ) : (
-        <Box sx={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 4, backgroundColor: '#f8fafc', position: 'relative', overflow: 'hidden' }}>
-          {/* Elegant Product selector tabs */}
-          <Box
-            sx={{
-              display: 'flex',
-              gap: 1,
-              p: 0.75,
-              backgroundColor: 'rgba(241, 245, 249, 0.8)',
-              backdropFilter: 'blur(4px)',
-              border: '1px solid rgba(226, 232, 240, 0.5)',
-              borderRadius: '16px',
-              mb: 3,
-              position: 'relative',
-              zIndex: 10,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-            }}
-            className="animate-fadeIn"
-          >
-            <Button
-              onClick={() => onSelectProduct('wytsaas')}
-              sx={{
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                px: 2.5,
-                py: 1,
-                borderRadius: '12px',
-                textTransform: 'none',
-                color: '#64748b',
-                '&:hover': { color: '#0f172a', backgroundColor: 'rgba(0,0,0,0.02)' },
-              }}
-            >
-              WytSaaS Login
-            </Button>
-            <Button
-              onClick={() => onSelectProduct('wytpass')}
-              variant="contained"
-              sx={{
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                px: 2.5,
-                py: 1,
-                borderRadius: '12px',
-                textTransform: 'none',
-                backgroundColor: '#9333ea',
-                '&:hover': { backgroundColor: '#7e22ce' },
-                boxShadow: '0 4px 6px -1px rgb(147 51 234 / 0.1)',
-              }}
-            >
-              WytPass Login
-            </Button>
-          </Box>
-
-          <LoginModalPass
-            isOpen={true}
-            onClose={() => { }}
-            onLoginSuccess={handleLoginSuccess}
-            isEmbedded={true}
-          />
-        </Box>
+        <LoginModalPass
+          isOpen={true}
+          onClose={() => { }}
+          onLoginSuccess={handleLoginSuccess}
+          isEmbedded={true}
+        />
       )}
     </Box>
   );
