@@ -13,6 +13,7 @@ import MyAccountModal from '@/custom-pages/my-account/MyAccountModal';
 import WatchlistCRUD from '@/custom-pages/brand/WatchlistCRUD';
 import UserWatchlistCards from '@/custom-pages/brand/UserWatchlistCards';
 import UsersCRUD from '@/custom-pages/admin/UsersCRUD';
+import BankingInfo from '@/custom-pages/banking-info/BankingInfo';
 
 interface ProductLayoutProps {
   onSelectProduct: (product: string) => void;
@@ -108,6 +109,10 @@ export default function WytSaaSPortalLayout({ onSelectProduct: _onSelectProduct 
                 <WytPaymentApprovals user={user} portalType="wytsaas" />
               ) : activeMenu === 'users' ? (
                 <UsersCRUD user={user} />
+              ) : activeMenu === 'banking-info' ? (
+                <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 4, py: 3, userSelect: 'none' }}>
+                  <BankingInfo user={user} />
+                </Box>
               ) : activeMenu === 'my-account' ? (
                 <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 4, py: 3, userSelect: 'none' }}>
                   <MyAccountModal
