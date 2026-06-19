@@ -552,7 +552,16 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
                   SSO Integration Dashboard: {selectedBrand.name}
                 </Typography>
                 <Typography sx={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold', mt: 0.5 }}>
-                  Ecosystem Integration Stage &bull; Current Pipeline: {selectedBrand.current_stage === 'brand_submission' ? 'APP SUBMISSION' : selectedBrand.current_stage.toUpperCase().replace('_', ' ')}
+                  Ecosystem Integration Stage &bull; Current Pipeline: {
+                    selectedBrand.current_stage === 'brand_submission'
+                      ? 'APP SUBMISSION'
+                      : (selectedBrand.current_stage.toLowerCase() === 'waiting for wytpass review'
+                        ? 'Waiting for Review'
+                        : (selectedBrand.current_stage.toLowerCase() === 'waiting for wytpass review rejected'
+                          ? 'Waiting for Review Rejected'
+                          : selectedBrand.current_stage)
+                        ).toUpperCase().replace('_', ' ')
+                  }
                 </Typography>
               </Box>
 

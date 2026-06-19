@@ -368,16 +368,16 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
           </Box>
         </Box>
 
-        <TableContainer>
+        <TableContainer sx={{ borderTop: '1px solid var(--mui-palette-divider)' }}>
           <Table sx={{ minWidth: 650 }}>
-            <TableHead sx={{ bgcolor: '#f8fafc' }}>
+            <TableHead>
               <TableRow>
-                <TableCell sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2 }}>Brand & Company</TableCell>
-                <TableCell sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2 }}>API Keys Setup</TableCell>
-                <TableCell sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2 }}>Webhook Configured</TableCell>
-                <TableCell sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2 }}>Test Payment Completed</TableCell>
-                <TableCell sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2 }}>Status</TableCell>
-                <TableCell align="right" sx={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', py: 2, pr: 4 }}>Actions</TableCell>
+                <TableCell sx={{ fontWeight: 500, fontSize: '0.8125rem', letterSpacing: '0.2px', color: 'text.primary', textTransform: 'uppercase', height: 56, bgcolor: 'background.paper' }}>Brand & Company</TableCell>
+                <TableCell sx={{ fontWeight: 500, fontSize: '0.8125rem', letterSpacing: '0.2px', color: 'text.primary', textTransform: 'uppercase', height: 56, bgcolor: 'background.paper' }}>API Keys Setup</TableCell>
+                <TableCell sx={{ fontWeight: 500, fontSize: '0.8125rem', letterSpacing: '0.2px', color: 'text.primary', textTransform: 'uppercase', height: 56, bgcolor: 'background.paper' }}>Webhook Configured</TableCell>
+                <TableCell sx={{ fontWeight: 500, fontSize: '0.8125rem', letterSpacing: '0.2px', color: 'text.primary', textTransform: 'uppercase', height: 56, bgcolor: 'background.paper' }}>Test Payment Completed</TableCell>
+                <TableCell sx={{ fontWeight: 500, fontSize: '0.8125rem', letterSpacing: '0.2px', color: 'text.primary', textTransform: 'uppercase', height: 56, bgcolor: 'background.paper' }}>Status</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 500, fontSize: '0.8125rem', letterSpacing: '0.2px', color: 'text.primary', textTransform: 'uppercase', height: 56, bgcolor: 'background.paper', textAlign: 'right', pr: 4 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -385,14 +385,18 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
                 <TableRow>
                   <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
                     <RefreshCw className="h-6 w-6 text-slate-300 animate-spin mx-auto mb-2" />
-                    <span className="text-xs font-semibold text-slate-400">Loading integration requests...</span>
+                    <Typography sx={{ fontSize: '0.8125rem', color: 'text.secondary', fontWeight: 500 }}>
+                      Loading integration requests...
+                    </Typography>
                   </TableCell>
                 </TableRow>
               ) : filteredBrands.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
                     <ClipboardCheck className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                    <span className="text-xs font-semibold text-slate-400">No payment integration requests found matching this status.</span>
+                    <Typography sx={{ fontSize: '0.8125rem', color: 'text.secondary', fontWeight: 500 }}>
+                      No payment integration requests found matching this status.
+                    </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -401,28 +405,39 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
                   const reviewStatus = review?.integration_status || 'pending';
 
                   return (
-                    <TableRow key={brand.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                      <TableCell sx={{ py: 3 }}>
+                    <TableRow 
+                      key={brand.id} 
+                      hover 
+                      sx={{ 
+                        borderBottom: '1px solid var(--mui-palette-divider)',
+                        '&:last-child td, &:last-child th': { border: 0 } 
+                      }}
+                    >
+                      <TableCell sx={{ py: 2 }}>
                         <div className="flex items-center gap-3">
                           {brand.logo_url ? (
                             <img
                               src={brand.logo_url}
                               alt={brand.name}
-                              className="h-9 w-9 rounded-xl border border-slate-100 object-cover"
+                              className="h-[34px] w-[34px] rounded-xl border border-slate-100 object-cover"
                             />
                           ) : (
-                            <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-xs border border-slate-200/50">
+                            <div className="h-[34px] w-[34px] rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-xs border border-slate-200/50">
                               {brand.name.charAt(0).toUpperCase()}
                             </div>
                           )}
                           <div>
-                            <div className="text-sm font-bold text-slate-800">{brand.name}</div>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{brand.company_name || 'N/A'}</div>
+                            <Typography sx={{ fontWeight: 600, fontSize: '0.9375rem', color: 'text.primary' }}>
+                              {brand.name}
+                            </Typography>
+                            <Typography sx={{ fontSize: '0.8125rem', color: 'text.secondary', textTransform: 'uppercase', fontWeight: 500 }}>
+                              {brand.company_name || 'N/A'}
+                            </Typography>
                           </div>
                         </div>
                       </TableCell>
 
-                      <TableCell sx={{ py: 3 }}>
+                      <TableCell sx={{ py: 2 }}>
                         {review?.api_keys_configured ? (
                           <div className="flex items-center gap-1.5 text-emerald-600 font-semibold text-xs">
                             <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
@@ -436,7 +451,7 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
                         )}
                       </TableCell>
 
-                      <TableCell sx={{ py: 3 }}>
+                      <TableCell sx={{ py: 2 }}>
                         {review?.webhook_verified ? (
                           <div className="flex items-center gap-1.5 text-emerald-600 font-semibold text-xs">
                             <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
@@ -450,7 +465,7 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
                         )}
                       </TableCell>
 
-                      <TableCell sx={{ py: 3 }}>
+                      <TableCell sx={{ py: 2 }}>
                         {review?.test_payment_completed ? (
                           <div className="flex items-center gap-1.5 text-emerald-600 font-semibold text-xs">
                             <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
@@ -464,7 +479,7 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
                         )}
                       </TableCell>
 
-                      <TableCell sx={{ py: 3 }}>
+                      <TableCell sx={{ py: 2 }}>
                         {reviewStatus === 'approved' && (
                           <Chip
                             icon={<CheckCircle2 className="h-3 w-3" style={{ color: '#047857' }} />}
@@ -473,9 +488,10 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
                             sx={{
                               bgcolor: '#ecfdf5',
                               color: '#047857',
-                              fontWeight: 'bold',
-                              fontSize: '9px',
-                              border: '1px solid #d1fae5'
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                              border: '1px solid #d1fae5',
+                              borderRadius: '6px'
                             }}
                           />
                         )}
@@ -487,44 +503,46 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
                             sx={{
                               bgcolor: '#fef2f2',
                               color: '#b91c1c',
-                              fontWeight: 'bold',
-                              fontSize: '9px',
-                              border: '1px solid #fee2e2'
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                              border: '1px solid #fee2e2',
+                              borderRadius: '6px'
                             }}
                           />
                         )}
                         {reviewStatus === 'pending' && (
                           <Chip
                             icon={<Clock className="h-3 w-3" style={{ color: '#d97706' }} />}
-                            label="PENDING REVIEW"
+                            label="PENDING"
                             size="small"
                             sx={{
                               bgcolor: '#fffbeb',
                               color: '#b45309',
-                              fontWeight: 'bold',
-                              fontSize: '9px',
-                              border: '1px solid #fef3c7'
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                              border: '1px solid #fef3c7',
+                              borderRadius: '6px'
                             }}
                           />
                         )}
                       </TableCell>
 
-                      <TableCell align="right" sx={{ py: 3, pr: 4 }}>
+                      <TableCell align="right" sx={{ py: 2, pr: 4 }}>
                         <Button
                           variant="outlined"
                           size="small"
                           onClick={() => handleOpenReview(brand)}
                           sx={{
-                            borderColor: reviewStatus === 'pending' ? primaryColor : '#e2e8f0',
-                            color: reviewStatus === 'pending' ? primaryColor : '#475569',
-                            borderRadius: '10px',
+                            borderColor: reviewStatus === 'pending' ? primaryColor : 'divider',
+                            color: reviewStatus === 'pending' ? primaryColor : 'text.secondary',
+                            borderRadius: '8px',
                             textTransform: 'none',
                             fontWeight: 'bold',
                             fontSize: '11px',
                             bgcolor: 'white',
                             '&:hover': {
-                              borderColor: reviewStatus === 'pending' ? primaryHoverColor : '#cbd5e1',
-                              bgcolor: '#f8fafc',
+                              borderColor: reviewStatus === 'pending' ? primaryHoverColor : 'divider',
+                              bgcolor: 'action.hover',
                             }
                           }}
                           startIcon={<ClipboardCheck className="h-3.5 w-3.5" />}

@@ -149,25 +149,6 @@ export default function SubscriptionDialog({
           )}
 
           <div className="space-y-4">
-            {/* Brand Selector dropdown */}
-            <FormControl fullWidth size="small">
-              <InputLabel id="brand-select-label" sx={{ fontSize: '12px', fontWeight: 'bold' }}>Associated App</InputLabel>
-              <Select
-                labelId="brand-select-label"
-                label="Associated App"
-                value={formBrandId}
-                onChange={(e) => setFormBrandId(e.target.value)}
-                sx={{ borderRadius: '12px', fontSize: '12px', fontWeight: 'semibold' }}
-                disabled={!!editingPlan || !!brandId} // Can't change brand after creation or if pre-locked to avoid constraint bugs
-              >
-                {brands.map(b => (
-                  <MenuItem key={b.id} value={b.id.toString()} sx={{ fontSize: '12px', fontWeight: 'bold' }}>
-                    {b.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
             {/* Plan Name */}
             <TextField
               fullWidth

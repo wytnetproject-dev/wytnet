@@ -477,9 +477,37 @@ export default function BrandSubscriptions({ user: _user, portalType, brandId, i
             />
           </Box>
 
-          <Typography className="ml-auto text-slate-400 text-[10px] font-bold uppercase tracking-wider">
-            {filteredPlans.length} plans active
-          </Typography>
+          <Box className="ml-auto flex items-center gap-3">
+            <Typography className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+              {filteredPlans.length} plans active
+            </Typography>
+            {isEmbedded && (
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleOpenCreate}
+                disabled={brands.length === 0}
+                sx={{
+                  bgcolor: primaryColor,
+                  borderRadius: '10px',
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  boxShadow: 'none',
+                  '&:hover': {
+                    bgcolor: primaryHoverColor,
+                    boxShadow: 'none',
+                  },
+                  '&:disabled': {
+                    bgcolor: '#cbd5e1',
+                    color: '#94a3b8'
+                  }
+                }}
+                startIcon={<Plus className="h-4 w-4" />}
+              >
+                Create Plan
+              </Button>
+            )}
+          </Box>
         </Box>
 
         {/* Modularized Table View */}
