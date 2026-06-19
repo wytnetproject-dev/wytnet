@@ -26,6 +26,12 @@ interface ImageUploaderProps {
   maxSizeMB?: number;
   autoResetAfterUpload?: boolean;
   isSandbox?: boolean;
+  minWidth?: number;
+  maxWidth?: number;
+  minHeight?: number;
+  maxHeight?: number;
+  minAspectRatio?: number;
+  maxAspectRatio?: number;
 }
 
 export default function ImageUploader({
@@ -36,12 +42,19 @@ export default function ImageUploader({
   maxSizeMB = 5,
   autoResetAfterUpload = false,
   isSandbox = false,
+  minWidth,
+  maxWidth,
+  minHeight,
+  maxHeight,
+  minAspectRatio,
+  maxAspectRatio,
 }: ImageUploaderProps) {
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadWarning, setUploadWarning] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -52,6 +65,7 @@ export default function ImageUploader({
       setProgress(0);
       setUploadSuccess(false);
       setUploadError(null);
+      setUploadWarning(null);
     }
   }, [value]);
 
@@ -67,6 +81,7 @@ export default function ImageUploader({
 
   const validateAndSetFile = (selectedFile: File) => {
     setUploadError(null);
+    setUploadWarning(null);
     setUploadSuccess(false);
 
     if (!selectedFile.type.startsWith("image/")) {
@@ -79,12 +94,70 @@ export default function ImageUploader({
       return;
     }
 
-    setFile(selectedFile);
-    // Auto-upload file
-    if (isSandbox) {
-      handleSimulateSandbox(selectedFile);
+    const needsDimensionCheck =
+      minWidth !== undefined ||
+      maxWidth !== undefined ||
+      minHeight !== undefined ||
+      maxHeight !== undefined ||
+      minAspectRatio !== undefined ||
+      maxAspectRatio !== undefined;
+
+    if (needsDimensionCheck) {
+      const img = new Image();
+      img.src = URL.createObjectURL(selectedFile);
+      img.onload = () => {
+        const w = img.width;
+        const h = img.height;
+        URL.revokeObjectURL(img.src);
+
+        // Validate dimensions
+        if (minWidth !== undefined && w < minWidth) {
+          setUploadError(`Image width (${w}px) is less than the minimum required ${minWidth}px.`);
+          return;
+        }
+        if (minHeight !== undefined && h < minHeight) {
+          setUploadError(`Image height (${h}px) is less than the minimum required ${minHeight}px.`);
+          return;
+        }
+        if (maxWidth !== undefined && w > maxWidth) {
+          setUploadError(`Image width (${w}px) exceeds the maximum allowed ${maxWidth}px.`);
+          return;
+        }
+        if (maxHeight !== undefined && h > maxHeight) {
+          setUploadError(`Image height (${h}px) exceeds the maximum allowed ${maxHeight}px.`);
+          return;
+        }
+
+        // Recommend aspect ratio (non-blocking warning)
+        if (minAspectRatio !== undefined && maxAspectRatio !== undefined) {
+          const ratio = w / h;
+          // Apply tolerance of 0.01 to allow minor subpixel rounding variances
+          if (ratio < minAspectRatio - 0.01 || ratio > maxAspectRatio + 0.01) {
+            setUploadWarning(
+              `Aspect ratio is ${ratio.toFixed(2)}. Recommended aspect ratio is between 16:9 (1.78) and 9:16 (0.56).`
+            );
+          }
+        }
+
+        setFile(selectedFile);
+        if (isSandbox) {
+          handleSimulateSandbox(selectedFile);
+        } else {
+          handleUpload(selectedFile);
+        }
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src);
+        setUploadError("Failed to load image to validate dimensions.");
+      };
     } else {
-      handleUpload(selectedFile);
+      setFile(selectedFile);
+      if (isSandbox) {
+        handleSimulateSandbox(selectedFile);
+      } else {
+        handleUpload(selectedFile);
+      }
     }
   };
 
@@ -180,6 +253,7 @@ export default function ImageUploader({
     setProgress(0);
     setUploadSuccess(false);
     setUploadError(null);
+    setUploadWarning(null);
   };
 
   return (
@@ -292,6 +366,13 @@ export default function ImageUploader({
               </Typography>
               <Typography className="text-[10px] text-slate-400 font-semibold mt-0.5">
                 PNG, JPG, WebP or SVG up to {maxSizeMB}MB
+                {((minWidth !== undefined && maxWidth !== undefined) || (minAspectRatio !== undefined && maxAspectRatio !== undefined)) && (
+                  <>
+                    {" • "}
+                    {minWidth !== undefined && maxWidth !== undefined && `Min ${minWidth}px, Max ${maxWidth}px`}
+                    {minAspectRatio !== undefined && maxAspectRatio !== undefined && " (16:9 to 9:16 recommended)"}
+                  </>
+                )}
               </Typography>
             </div>
           </Box>
@@ -369,6 +450,23 @@ export default function ImageUploader({
                   }}
                 >
                   {uploadError}
+                </Alert>
+              </Box>
+            )}
+
+            {uploadWarning && (
+              <Box className="space-y-2">
+                <Alert
+                  severity="warning"
+                  icon={<AlertTriangle className="h-4 w-4 shrink-0" />}
+                  sx={{
+                    borderRadius: "12px",
+                    fontSize: "11px",
+                    lineHeight: 1.4,
+                    py: 0.5,
+                  }}
+                >
+                  {uploadWarning}
                 </Alert>
               </Box>
             )}

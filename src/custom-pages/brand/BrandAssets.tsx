@@ -60,6 +60,7 @@ export default function BrandAssets({ user: _user, portalType, brandId, isEmbedd
   // New media asset form state
   const [newUrl, setNewUrl] = useState('');
   const [newSortOrder, setNewSortOrder] = useState('');
+  const [promoVideoUrl, setPromoVideoUrl] = useState('');
 
   // Toast Alerts State
   const [toastOpen, setToastOpen] = useState(false);
@@ -141,6 +142,13 @@ export default function BrandAssets({ user: _user, portalType, brandId, isEmbedd
   // Automatically add screenshot to gallery list on upload success
   const handleUploadSuccess = (uploadedUrl: string) => {
     if (!uploadedUrl) return;
+
+    const currentImagesCount = currentMedia.filter(m => m.media_type === 'image').length;
+    if (currentImagesCount >= 7) {
+      showToast('Maximum of 7 screenshots is allowed.', 'error');
+      return;
+    }
+
     const order = newSortOrder ? parseInt(newSortOrder) : currentMedia.length + 1;
     const newAsset: BrandMedia = {
       media_type: 'image',
@@ -155,46 +163,129 @@ export default function BrandAssets({ user: _user, portalType, brandId, isEmbedd
     setNewSortOrder('');
   };
 
-  // Remove asset from dynamic list
-  const handleRemoveAsset = (index: number) => {
-    const updated = currentMedia.filter((_, idx) => idx !== index);
+  const getYouTubeThumbnail = (url: string) => {
+    let videoId = '';
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    if (match && (match[2].length === 12 || match[2].length === 11)) {
+      videoId = match[2];
+    }
+    if (videoId) {
+      return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    }
+    return '';
+  };
+
+  const handleAddPromoVideo = () => {
+    if (!promoVideoUrl.trim()) {
+      showToast('Please enter a YouTube video URL.', 'error');
+      return;
+    }
+    
+    // Allow only one promotional video link
+    const hasVideo = currentMedia.some(item => item.media_type === 'video');
+    if (hasVideo) {
+      showToast('Only one promotional video link is allowed.', 'error');
+      return;
+    }
+    
+    const ytRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+    if (!ytRegex.test(promoVideoUrl.trim())) {
+      showToast('Please enter a valid YouTube link.', 'error');
+      return;
+    }
+
+    const order = newSortOrder ? parseInt(newSortOrder) : currentMedia.length + 1;
+    const newAsset: BrandMedia = {
+      media_type: 'video',
+      media_url: promoVideoUrl.trim(),
+      sort_order: order
+    };
+
+    const updated = [...currentMedia, newAsset].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
     setCurrentMedia(updated);
     setHasChanges(true);
+    setPromoVideoUrl('');
+    setNewSortOrder('');
+    showToast('Promotional video added to library list.', 'success');
   };
 
-  // Move asset up in sort order
-  const handleMoveUp = (index: number) => {
-    if (index === 0) return;
-    const updated = [...currentMedia];
-    const temp = updated[index];
-    updated[index] = updated[index - 1];
-    updated[index - 1] = temp;
-    
-    // Recalculate sort orders
+  // Remove asset from dynamic list
+  const handleRemoveAsset = (itemToRemove: BrandMedia) => {
+    const updated = currentMedia.filter((item) => item.media_url !== itemToRemove.media_url);
     const resort = updated.map((item, idx) => ({
       ...item,
       sort_order: idx + 1
     }));
-    
     setCurrentMedia(resort);
     setHasChanges(true);
   };
 
-  // Move asset down in sort order
-  const handleMoveDown = (index: number) => {
-    if (index === currentMedia.length - 1) return;
-    const updated = [...currentMedia];
-    const temp = updated[index];
-    updated[index] = updated[index + 1];
-    updated[index + 1] = temp;
+  // Move image up in sort order
+  const handleMoveImageUp = (idxInFiltered: number) => {
+    if (idxInFiltered === 0) return;
+    const images = currentMedia.filter(item => item.media_type === 'image');
+    const videos = currentMedia.filter(item => item.media_type !== 'image');
     
-    // Recalculate sort orders
-    const resort = updated.map((item, idx) => ({
-      ...item,
-      sort_order: idx + 1
-    }));
+    const temp = images[idxInFiltered];
+    images[idxInFiltered] = images[idxInFiltered - 1];
+    images[idxInFiltered - 1] = temp;
     
-    setCurrentMedia(resort);
+    const updatedImages = images.map((item, idx) => ({ ...item, sort_order: idx + 1 }));
+    const updatedVideos = videos.map((item, idx) => ({ ...item, sort_order: images.length + idx + 1 }));
+    
+    setCurrentMedia([...updatedImages, ...updatedVideos]);
+    setHasChanges(true);
+  };
+
+  // Move image down in sort order
+  const handleMoveImageDown = (idxInFiltered: number) => {
+    const images = currentMedia.filter(item => item.media_type === 'image');
+    if (idxInFiltered === images.length - 1) return;
+    const videos = currentMedia.filter(item => item.media_type !== 'image');
+    
+    const temp = images[idxInFiltered];
+    images[idxInFiltered] = images[idxInFiltered + 1];
+    images[idxInFiltered + 1] = temp;
+    
+    const updatedImages = images.map((item, idx) => ({ ...item, sort_order: idx + 1 }));
+    const updatedVideos = videos.map((item, idx) => ({ ...item, sort_order: images.length + idx + 1 }));
+    
+    setCurrentMedia([...updatedImages, ...updatedVideos]);
+    setHasChanges(true);
+  };
+
+  // Move video up in sort order
+  const handleMoveVideoUp = (idxInFiltered: number) => {
+    if (idxInFiltered === 0) return;
+    const images = currentMedia.filter(item => item.media_type === 'image');
+    const videos = currentMedia.filter(item => item.media_type === 'video');
+    
+    const temp = videos[idxInFiltered];
+    videos[idxInFiltered] = videos[idxInFiltered - 1];
+    videos[idxInFiltered - 1] = temp;
+    
+    const updatedImages = images.map((item, idx) => ({ ...item, sort_order: idx + 1 }));
+    const updatedVideos = videos.map((item, idx) => ({ ...item, sort_order: images.length + idx + 1 }));
+    
+    setCurrentMedia([...updatedImages, ...updatedVideos]);
+    setHasChanges(true);
+  };
+
+  // Move video down in sort order
+  const handleMoveVideoDown = (idxInFiltered: number) => {
+    const images = currentMedia.filter(item => item.media_type === 'image');
+    const videos = currentMedia.filter(item => item.media_type === 'video');
+    if (idxInFiltered === videos.length - 1) return;
+    
+    const temp = videos[idxInFiltered];
+    videos[idxInFiltered] = videos[idxInFiltered + 1];
+    videos[idxInFiltered + 1] = temp;
+    
+    const updatedImages = images.map((item, idx) => ({ ...item, sort_order: idx + 1 }));
+    const updatedVideos = videos.map((item, idx) => ({ ...item, sort_order: images.length + idx + 1 }));
+    
+    setCurrentMedia([...updatedImages, ...updatedVideos]);
     setHasChanges(true);
   };
 
@@ -439,34 +530,84 @@ export default function BrandAssets({ user: _user, portalType, brandId, isEmbedd
                     </Box>
 
                     <Box sx={{ maxWidth: '100%' }}>
-                      <ImageUploader
-                        label="Upload Screenshot Image File"
-                        value={newUrl}
-                        onChange={handleUploadSuccess}
-                        primaryColor={primaryColor}
-                        autoResetAfterUpload={true}
-                        isSandbox={isSandbox}
-                      />
+                      {currentMedia.filter(m => m.media_type === 'image').length >= 7 ? (
+                        <Alert severity="info" sx={{ borderRadius: '12px' }}>
+                          Maximum limit of 7 screenshots reached. Delete an existing screenshot to upload a new one.
+                        </Alert>
+                      ) : (
+                        <ImageUploader
+                          label="Upload Screenshot Image File"
+                          value={newUrl}
+                          onChange={handleUploadSuccess}
+                          primaryColor={primaryColor}
+                          autoResetAfterUpload={true}
+                          isSandbox={isSandbox}
+                          minWidth={320}
+                          minHeight={320}
+                          maxWidth={3840}
+                          maxHeight={3840}
+                          minAspectRatio={9 / 16}
+                          maxAspectRatio={16 / 9}
+                        />
+                      )}
+                    </Box>
+
+                    <Divider sx={{ my: 1.5, borderStyle: 'dashed' }} />
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      <Typography sx={{ fontWeight: 'bold', fontSize: '12px', color: '#475569' }}>
+                        Or Add YouTube Promotional Video
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <TextField
+                          label="YouTube Video URL"
+                          placeholder="e.g. https://www.youtube.com/watch?v=..."
+                          size="small"
+                          value={promoVideoUrl}
+                          onChange={(e) => setPromoVideoUrl(e.target.value)}
+                          sx={{ flexGrow: 1, minWidth: '280px', maxWidth: '500px' }}
+                          slotProps={{
+                            inputLabel: { style: { fontSize: '12px', fontWeight: '600' } },
+                            input: { style: { borderRadius: '10px', fontSize: '12px' } }
+                          }}
+                        />
+                        <Button
+                          variant="outlined"
+                          size="medium"
+                          onClick={handleAddPromoVideo}
+                          sx={{
+                            borderColor: primaryColor,
+                            color: primaryColor,
+                            borderRadius: '10px',
+                            textTransform: 'none',
+                            fontWeight: 'bold',
+                            px: 3,
+                            '&:hover': {
+                              borderColor: primaryHoverColor,
+                              bgcolor: selectionBgColor,
+                            }
+                          }}
+                        >
+                          Add Video Asset
+                        </Button>
+                      </Box>
                     </Box>
                   </Box>
                 </Box>
 
                 <Divider />
 
-                {/* 2. Gallery Asset List Section */}
+                {/* 2. Gallery Screenshots Section */}
                 <Box>
                   <Typography sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', mb: 2, textTransform: 'uppercase' }}>
-                    Gallery Items ({currentMedia.length})
+                    Gallery Screenshots ({currentMedia.filter(m => m.media_type === 'image').length})
                   </Typography>
 
-                  {currentMedia.length === 0 ? (
-                    <Box sx={{ border: '1px dashed #cbd5e1', borderRadius: '16px', py: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: '#f8fafc' }}>
-                      <ImageIcon className="h-8 w-8 text-slate-300 mb-2" />
-                      <Typography sx={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>
-                        No Assets Linked
-                      </Typography>
-                      <Typography sx={{ fontSize: '10.5px', color: '#94a3b8', mt: 0.5 }}>
-                        Enter a URL above and click Add to create screenshots and banners.
+                  {currentMedia.filter(m => m.media_type === 'image').length === 0 ? (
+                    <Box sx={{ border: '1px dashed #cbd5e1', borderRadius: '16px', py: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: '#f8fafc' }}>
+                      <ImageIcon className="h-6 w-6 text-slate-300 mb-1" />
+                      <Typography sx={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>
+                        No Screenshots Linked
                       </Typography>
                     </Box>
                   ) : (
@@ -482,8 +623,7 @@ export default function BrandAssets({ user: _user, portalType, brandId, isEmbedd
                         scrollbarWidth: 'none'
                       }}
                     >
-                      {currentMedia.map((item, idx) => {
-                        const isImage = item.media_type === 'image';
+                      {currentMedia.filter(m => m.media_type === 'image').map((item, idx, arr) => {
                         return (
                           <Card
                             key={idx}
@@ -507,29 +647,20 @@ export default function BrandAssets({ user: _user, portalType, brandId, isEmbedd
                           >
                             {/* Card Media Preview */}
                             <Box sx={{ position: 'relative', flexGrow: 1, bgcolor: '#f1f5f9', overflow: 'hidden' }}>
-                              {isImage ? (
-                                <CardMedia
-                                  component="img"
-                                  image={item.media_url}
-                                  alt="Preview"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).src = 'https://placehold.co/300x533?text=Preview+Error';
-                                  }}
-                                  sx={{ height: '100%', width: '100%', objectFit: 'cover' }}
-                                />
-                              ) : (
-                                <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 1.5 }}>
-                                  <Video className="h-5 w-5 text-indigo-500 mb-1" />
-                                  <Typography sx={{ fontSize: '9px', color: '#64748b', fontWeight: 'bold', wordBreak: 'break-all', textAlign: 'center', px: 0.5 }}>
-                                    {item.media_url}
-                                  </Typography>
-                                </Box>
-                              )}
+                              <CardMedia
+                                component="img"
+                                image={item.media_url}
+                                alt="Preview"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = 'https://placehold.co/300x533?text=Preview+Error';
+                                }}
+                                sx={{ height: '100%', width: '100%', objectFit: 'cover' }}
+                              />
 
                               {/* Chip badge indicator */}
                               <Chip
-                                icon={isImage ? <ImageIcon className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-                                label={isImage ? 'IMAGE' : 'VIDEO'}
+                                icon={<ImageIcon className="h-3 w-3" />}
+                                label="IMAGE"
                                 size="small"
                                 sx={{
                                   position: 'absolute',
@@ -570,15 +701,15 @@ export default function BrandAssets({ user: _user, portalType, brandId, isEmbedd
                                 <IconButton
                                   size="small"
                                   disabled={idx === 0}
-                                  onClick={() => handleMoveUp(idx)}
+                                  onClick={() => handleMoveImageUp(idx)}
                                   sx={{ p: 0.25, color: '#64748b' }}
                                 >
                                   <ChevronLeft className="h-4 w-4" />
                                 </IconButton>
                                 <IconButton
                                   size="small"
-                                  disabled={idx === currentMedia.length - 1}
-                                  onClick={() => handleMoveDown(idx)}
+                                  disabled={idx === arr.length - 1}
+                                  onClick={() => handleMoveImageDown(idx)}
                                   sx={{ p: 0.25, color: '#64748b' }}
                                 >
                                   <ChevronRight className="h-4 w-4" />
@@ -587,7 +718,163 @@ export default function BrandAssets({ user: _user, portalType, brandId, isEmbedd
 
                               <IconButton
                                 size="small"
-                                onClick={() => handleRemoveAsset(idx)}
+                                onClick={() => handleRemoveAsset(item)}
+                                sx={{
+                                  p: 0.25,
+                                  color: '#64748b',
+                                  '&:hover': {
+                                    color: '#ef4444',
+                                    bgcolor: '#fee2e2'
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </IconButton>
+                            </CardActions>
+                          </Card>
+                        );
+                      })}
+                    </Box>
+                  )}
+                </Box>
+
+                <Divider sx={{ my: 1 }} />
+
+                {/* 3. Promotional Videos Section */}
+                <Box>
+                  <Typography sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', mb: 2, textTransform: 'uppercase' }}>
+                    Promotional Videos ({currentMedia.filter(m => m.media_type === 'video').length})
+                  </Typography>
+
+                  {currentMedia.filter(m => m.media_type === 'video').length === 0 ? (
+                    <Box sx={{ border: '1px dashed #cbd5e1', borderRadius: '16px', py: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: '#f8fafc' }}>
+                      <Video className="h-6 w-6 text-slate-300 mb-1" />
+                      <Typography sx={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>
+                        No Videos Linked
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        gap: 2,
+                        overflowX: 'auto',
+                        pb: 2,
+                        pt: 1,
+                        '::-webkit-scrollbar': { display: 'none' },
+                        msOverflowStyle: 'none',
+                        scrollbarWidth: 'none'
+                      }}
+                    >
+                      {currentMedia.filter(m => m.media_type === 'video').map((item, idx, arr) => {
+                        return (
+                          <Card
+                            key={idx}
+                            elevation={0}
+                            sx={{
+                              width: 240,
+                              height: 180,
+                              flexShrink: 0,
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '16px',
+                              overflow: 'hidden',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              transition: 'transform 0.15s, border-color 0.15s, box-shadow 0.15s',
+                              '&:hover': {
+                                transform: 'translateY(-4px)',
+                                borderColor: '#cbd5e1',
+                                boxShadow: '0 6px 16px rgba(0,0,0,0.06)'
+                              }
+                            }}
+                          >
+                            {/* Card Media Preview */}
+                            <Box sx={{ position: 'relative', height: 135, bgcolor: '#f1f5f9', overflow: 'hidden' }}>
+                              <Box sx={{ height: '100%', width: '100%', position: 'relative' }}>
+                                {getYouTubeThumbnail(item.media_url) ? (
+                                  <CardMedia
+                                    component="img"
+                                    image={getYouTubeThumbnail(item.media_url)}
+                                    alt="YouTube Preview"
+                                    sx={{ height: '100%', width: '100%', objectFit: 'cover' }}
+                                  />
+                                ) : (
+                                  <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 1.5, bgcolor: '#f1f5f9' }}>
+                                    <Video className="h-5 w-5 text-indigo-500 mb-1" />
+                                    <Typography sx={{ fontSize: '9px', color: '#64748b', fontWeight: 'bold', wordBreak: 'break-all', textAlign: 'center', px: 0.5 }}>
+                                      {item.media_url}
+                                    </Typography>
+                                  </Box>
+                                )}
+                                <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(0,0,0,0.2)' }}>
+                                  <Box sx={{ bgcolor: '#ff0000', borderRadius: '50%', p: 0.75, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>
+                                    <Play className="h-4 w-4 fill-current text-white" />
+                                  </Box>
+                                </Box>
+                              </Box>
+
+                              {/* Chip badge indicator */}
+                              <Chip
+                                icon={<Play className="h-3 w-3" />}
+                                label="VIDEO"
+                                size="small"
+                                sx={{
+                                  position: 'absolute',
+                                  top: 8,
+                                  left: 8,
+                                  bgcolor: 'rgba(15, 23, 42, 0.75)',
+                                  color: 'white',
+                                  fontSize: '8px',
+                                  height: '18px',
+                                  fontWeight: 'bold',
+                                  backdropFilter: 'blur(4px)',
+                                  '& .MuiChip-icon': {
+                                    color: 'white'
+                                  }
+                                }}
+                              />
+
+                              {/* Sort Order overlay */}
+                              <Chip
+                                label={`Order: ${item.sort_order || idx + 1}`}
+                                size="small"
+                                sx={{
+                                  position: 'absolute',
+                                  bottom: 8,
+                                  right: 8,
+                                  bgcolor: 'rgba(255, 255, 255, 0.9)',
+                                  color: '#0f172a',
+                                  fontSize: '8px',
+                                  height: '18px',
+                                  fontWeight: 'bold'
+                                }}
+                              />
+                            </Box>
+
+                            {/* Card Footer Actions */}
+                            <CardActions sx={{ justifyContent: 'space-between', px: 1, py: 0.5, bgcolor: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
+                              <Box sx={{ display: 'flex', gap: 0.15 }}>
+                                <IconButton
+                                  size="small"
+                                  disabled={idx === 0}
+                                  onClick={() => handleMoveVideoUp(idx)}
+                                  sx={{ p: 0.25, color: '#64748b' }}
+                                >
+                                  <ChevronLeft className="h-4 w-4" />
+                                </IconButton>
+                                <IconButton
+                                  size="small"
+                                  disabled={idx === arr.length - 1}
+                                  onClick={() => handleMoveVideoDown(idx)}
+                                  sx={{ p: 0.25, color: '#64748b' }}
+                                >
+                                  <ChevronRight className="h-4 w-4" />
+                                </IconButton>
+                              </Box>
+
+                              <IconButton
+                                size="small"
+                                onClick={() => handleRemoveAsset(item)}
                                 sx={{
                                   p: 0.25,
                                   color: '#64748b',

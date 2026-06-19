@@ -55,7 +55,13 @@ export default function BrandTable({
   };
 
   const getStageChipLabel = (stageVal: string) => {
-    return stageVal.replace('_', ' ').toUpperCase();
+    let normalized = stageVal.replace('_', ' ');
+    if (normalized.toLowerCase() === 'waiting for wytpass review') {
+      normalized = 'Waiting for Review';
+    } else if (normalized.toLowerCase() === 'waiting for wytpass review rejected') {
+      normalized = 'Waiting for Review Rejected';
+    }
+    return normalized.toUpperCase();
   };
 
   if (isLoading) {
@@ -86,18 +92,18 @@ export default function BrandTable({
   }
 
   return (
-    <TableContainer sx={{ maxHeight: 520 }}>
-      <Table stickyHeader size="medium">
+    <TableContainer sx={{ maxHeight: 520, borderTop: '1px solid var(--mui-palette-divider)' }}>
+      <Table stickyHeader size="medium" sx={{ minWidth: 650 }}>
         <TableHead>
           <TableRow>
-            <TableCell sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', bgcolor: '#f8fafc', textTransform: 'uppercase' }}>Logo</TableCell>
-            <TableCell sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', bgcolor: '#f8fafc', textTransform: 'uppercase' }}>App Detail</TableCell>
-            <TableCell sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', bgcolor: '#f8fafc', textTransform: 'uppercase' }}>Type</TableCell>
-            <TableCell sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', bgcolor: '#f8fafc', textTransform: 'uppercase' }}>Company</TableCell>
-            <TableCell sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', bgcolor: '#f8fafc', textTransform: 'uppercase' }}>Stage</TableCell>
-            <TableCell sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', bgcolor: '#f8fafc', textTransform: 'uppercase' }}>Status</TableCell>
-            <TableCell sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', bgcolor: '#f8fafc', textTransform: 'uppercase', textAlign: 'center' }}>Featured</TableCell>
-            <TableCell sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', bgcolor: '#f8fafc', textTransform: 'uppercase', textAlign: 'right' }}>Actions</TableCell>
+            <TableCell sx={{ fontWeight: 500, fontSize: '0.8125rem', letterSpacing: '0.2px', color: 'text.primary', textTransform: 'uppercase', height: 56, bgcolor: 'background.paper' }}>Logo</TableCell>
+            <TableCell sx={{ fontWeight: 500, fontSize: '0.8125rem', letterSpacing: '0.2px', color: 'text.primary', textTransform: 'uppercase', height: 56, bgcolor: 'background.paper' }}>App Detail</TableCell>
+            <TableCell sx={{ fontWeight: 500, fontSize: '0.8125rem', letterSpacing: '0.2px', color: 'text.primary', textTransform: 'uppercase', height: 56, bgcolor: 'background.paper' }}>Type</TableCell>
+            <TableCell sx={{ fontWeight: 500, fontSize: '0.8125rem', letterSpacing: '0.2px', color: 'text.primary', textTransform: 'uppercase', height: 56, bgcolor: 'background.paper' }}>Company</TableCell>
+            <TableCell sx={{ fontWeight: 500, fontSize: '0.8125rem', letterSpacing: '0.2px', color: 'text.primary', textTransform: 'uppercase', height: 56, bgcolor: 'background.paper' }}>Stage</TableCell>
+            <TableCell sx={{ fontWeight: 500, fontSize: '0.8125rem', letterSpacing: '0.2px', color: 'text.primary', textTransform: 'uppercase', height: 56, bgcolor: 'background.paper' }}>Status</TableCell>
+            <TableCell sx={{ fontWeight: 500, fontSize: '0.8125rem', letterSpacing: '0.2px', color: 'text.primary', textTransform: 'uppercase', height: 56, bgcolor: 'background.paper', textAlign: 'center' }}>Featured</TableCell>
+            <TableCell sx={{ fontWeight: 500, fontSize: '0.8125rem', letterSpacing: '0.2px', color: 'text.primary', textTransform: 'uppercase', height: 56, bgcolor: 'background.paper', textAlign: 'right', pr: 4 }}>Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -105,34 +111,38 @@ export default function BrandTable({
             <TableRow
               key={brand.id}
               hover
-              sx={{ '&:last-child td, &:last-child th': { border: 0 }, transition: 'all 0.15s' }}
+              sx={{ 
+                borderBottom: '1px solid var(--mui-palette-divider)',
+                '&:last-child td, &:last-child th': { border: 0 },
+                transition: 'all 0.15s' 
+              }}
             >
-              <TableCell>
+              <TableCell sx={{ py: 2 }}>
                 {brand.logo_url ? (
                   <img
                     src={brand.logo_url}
                     alt={`${brand.name} logo`}
-                    className="h-9 w-9 object-cover rounded-xl border border-slate-100 shadow-sm"
+                    className="h-[34px] w-[34px] object-cover rounded-xl border border-slate-100 shadow-sm"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = 'https://placehold.co/80x80?text=App';
                     }}
                   />
                 ) : (
-                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center font-black text-white text-xs shadow-sm`} style={{ backgroundColor: primaryColor }}>
+                  <div className={`h-[34px] w-[34px] rounded-xl flex items-center justify-center font-black text-white text-xs shadow-sm`} style={{ backgroundColor: primaryColor }}>
                     {brand.name.charAt(0).toUpperCase()}
                   </div>
                 )}
               </TableCell>
-              <TableCell>
-                <div>
-                  <Typography sx={{ fontWeight: 'bold', fontSize: '12.5px', color: '#1e293b' }}>
+              <TableCell sx={{ py: 2 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                  <Typography sx={{ fontWeight: 600, fontSize: '0.9375rem', color: 'text.primary' }}>
                     {brand.name}
                   </Typography>
-                  <Typography sx={{ fontSize: '10.5px', color: '#64748b', fontFamily: 'monospace' }}>
+                  <Typography sx={{ fontSize: '0.8125rem', color: 'text.secondary', fontFamily: 'monospace' }}>
                     /{brand.slug}
                   </Typography>
                   {brand.links && brand.links.length > 0 && (
-                    <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                    <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
                       {brand.links.map((link, lIdx) => (
                         <Chip
                           key={lIdx}
@@ -143,9 +153,9 @@ export default function BrandTable({
                           target="_blank"
                           clickable
                           sx={{
-                            fontSize: '8.5px',
-                            height: '16px',
-                            fontWeight: 'bold',
+                            fontSize: '0.75rem',
+                            height: '18px',
+                            fontWeight: 500,
                             bgcolor: '#f1f5f9',
                             color: primaryColor,
                             textDecoration: 'none',
@@ -156,16 +166,16 @@ export default function BrandTable({
                     </Box>
                   )}
                   {brand.tags && brand.tags.length > 0 && (
-                    <Box sx={{ display: 'flex', gap: 0.5, mt: 0.75, flexWrap: 'wrap' }}>
+                    <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
                       {brand.tags.map((tag) => (
                         <Chip
                           key={tag.id}
                           label={tag.name}
                           size="small"
                           sx={{
-                            fontSize: '8.5px',
-                            height: '16px',
-                            fontWeight: 'bold',
+                            fontSize: '0.75rem',
+                            height: '18px',
+                            fontWeight: 500,
                             bgcolor: '#eff6ff',
                             color: '#1d4ed8',
                             border: '1px solid #dbeafe'
@@ -174,9 +184,9 @@ export default function BrandTable({
                       ))}
                     </Box>
                   )}
-                </div>
+                </Box>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ py: 2 }}>
                 <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                   {(() => {
                     const types = brand.brand_type
@@ -188,12 +198,12 @@ export default function BrandTable({
                         label={t}
                         size="small"
                         sx={{
-                          fontSize: '9px',
-                          fontWeight: 'bold',
+                          fontSize: '0.75rem',
+                          fontWeight: 500,
                           textTransform: 'uppercase',
                           bgcolor: '#f1f5f9',
                           color: '#475569',
-                          borderRadius: '8px',
+                          borderRadius: '6px',
                           height: '20px'
                         }}
                       />
@@ -201,25 +211,25 @@ export default function BrandTable({
                   })()}
                 </Box>
               </TableCell>
-              <TableCell>
-                <Typography sx={{ fontSize: '12px', fontWeight: '500', color: '#334155' }}>
+              <TableCell sx={{ py: 2 }}>
+                <Typography sx={{ fontSize: '0.875rem', fontWeight: 500, color: 'text.secondary' }}>
                   {brand.company_name || '—'}
                 </Typography>
               </TableCell>
-              <TableCell>
-                <Typography sx={{ fontSize: '11px', fontWeight: 'bold', color: '#475569' }}>
+              <TableCell sx={{ py: 2 }}>
+                <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: 'text.secondary' }}>
                   {getStageChipLabel(brand.current_stage)}
                 </Typography>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ py: 2 }}>
                 <Chip
                   label={brand.status}
                   size="small"
                   color={getStatusChipColor(brand.status)}
-                  sx={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', borderRadius: '8px' }}
+                  sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', borderRadius: '6px' }}
                 />
               </TableCell>
-              <TableCell align="center">
+              <TableCell align="center" sx={{ py: 2 }}>
                 {brand.is_featured ? (
                   <Tooltip title="Featured App">
                     <span className="inline-flex h-2.5 w-2.5 rounded-full bg-amber-400 shadow-sm shadow-amber-300/50 animate-pulse" />
@@ -228,14 +238,14 @@ export default function BrandTable({
                   <span className="inline-flex h-2 w-2 rounded-full bg-slate-200" />
                 )}
               </TableCell>
-              <TableCell align="right">
+              <TableCell align="right" sx={{ py: 2, pr: 4 }}>
                 <div className="flex justify-end gap-1">
                   <Tooltip title={watchlistIds.includes(brand.id) ? 'Remove from Watchlist' : 'Add to Watchlist'}>
                     <IconButton
                       onClick={() => onToggleWatch(brand.id)}
                       size="small"
                       sx={{
-                        color: watchlistIds.includes(brand.id) ? '#eab308' : '#64748b',
+                        color: watchlistIds.includes(brand.id) ? '#eab308' : 'text.secondary',
                         '&:hover': {
                           color: '#eab308',
                           bgcolor: '#fef9c3'
@@ -251,7 +261,7 @@ export default function BrandTable({
                         onClick={() => onViewDetails(brand)}
                         size="small"
                         sx={{
-                          color: '#64748b',
+                          color: 'text.secondary',
                           '&:hover': {
                             color: primaryColor,
                             bgcolor: `${primaryColor}10`
@@ -283,7 +293,7 @@ export default function BrandTable({
                     onClick={() => onEdit(brand)}
                     size="small"
                     sx={{
-                      color: '#64748b',
+                      color: 'text.secondary',
                       '&:hover': {
                         color: primaryColor,
                         bgcolor: `${primaryColor}10`
@@ -296,7 +306,7 @@ export default function BrandTable({
                     onClick={() => onDelete(brand)}
                     size="small"
                     sx={{
-                      color: '#64748b',
+                      color: 'text.secondary',
                       '&:hover': {
                         color: '#ef4444',
                         bgcolor: '#fee2e2'

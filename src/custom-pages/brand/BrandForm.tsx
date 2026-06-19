@@ -66,6 +66,16 @@ export default function BrandForm({
   const [githubUrl, setGithubUrl] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [logoError, setLogoError] = useState(false);
+  const [bannerError, setBannerError] = useState(false);
+
+  useEffect(() => {
+    setLogoError(false);
+  }, [logoUrl]);
+
+  useEffect(() => {
+    setBannerError(false);
+  }, [bannerUrl]);
 
   // Slugifier helper
   const slugify = (text: string) => {
@@ -472,28 +482,27 @@ export default function BrandForm({
               </Box>
             </div>
 
-            {/* Quick Logo/Banner Preview */}
-            {(logoUrl || bannerUrl) && (
+            {((logoUrl && !logoError) || (bannerUrl && !bannerError)) && (
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col md:flex-row gap-5 items-center justify-start">
-                {logoUrl && (
+                {logoUrl && !logoError && (
                   <div className="flex flex-col items-center gap-1.5">
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Logo Preview</span>
                     <img
                       src={logoUrl}
                       alt="Logo preview"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      onError={() => setLogoError(true)}
                       className="w-16 h-16 rounded-2xl object-contain bg-white border border-slate-200/60 p-1.5 shadow-sm"
                     />
                   </div>
                 )}
-                {bannerUrl && (
+                {bannerUrl && !bannerError && (
                   <div className="flex-grow flex flex-col items-center md:items-start gap-1.5 w-full">
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Banner Preview</span>
                     <img
                       src={bannerUrl}
                       alt="Banner preview"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      className="w-full max-h-20 rounded-2xl object-cover border border-slate-200/60 shadow-sm"
+                      onError={() => setBannerError(true)}
+                      className="w-full max-h-32 rounded-2xl object-cover border border-slate-200/60 shadow-sm"
                     />
                   </div>
                 )}

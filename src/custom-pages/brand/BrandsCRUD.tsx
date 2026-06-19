@@ -38,6 +38,7 @@ import {
   createBrand,
   deleteBrand
 } from '@/api/wytsaas/brand';
+import { createSubscriptionPlan } from '@/api/wytsaas/subscription';
 
 // Sub-components inside the same folder
 import BrandTable from './BrandTable';
@@ -46,7 +47,7 @@ import BrandAssets from './BrandAssets';
 import SSOIntegration from './SSOIntegration';
 import PaymentIntegration from './PaymentIntegration';
 import BrandSubscriptions from '@/custom-pages/subscription/BrandSubscriptions';
-import BrandUsers from './BrandUsers';
+
 import BrandIntegrationSettings from './BrandIntegrationSettings';
 import { fetchWatchlist, addToWatchlist, removeFromWatchlist } from '@/api/wytsaas/watchlist';
 
@@ -73,7 +74,7 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
   // View State: 'list' | 'create' | 'edit' | 'details'
   const [viewMode, setViewMode] = useState<'list' | 'create' | 'edit' | 'details'>('list');
   const [selectedDetailBrand, setSelectedDetailBrand] = useState<Brand | null>(null);
-  const [detailTab, setDetailTab] = useState<'assets' | 'subscriptions' | 'sso' | 'payment' | 'users' | 'integration'>('assets');
+  const [detailTab, setDetailTab] = useState<'assets' | 'subscriptions' | 'sso' | 'payment' | 'integration'>('assets');
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
   const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
@@ -239,7 +240,31 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
           updated_at: nowString,
         } as Brand;
         updatedList.push(newBrand);
-        showToast('App created successfully (Sandbox)', 'success');
+
+        // Automatically create a mock Free Plan in local storage
+        try {
+          const storedPlans = localStorage.getItem('mock_subscription_plans');
+          const currentPlans = storedPlans ? JSON.parse(storedPlans) : [];
+          const nextPlanId = currentPlans.length > 0 ? Math.max(...currentPlans.map((p: any) => p.id), 0) + 1 : 1;
+          const mockFreePlan = {
+            id: nextPlanId,
+            brand_id: newId,
+            name: 'Free Plan',
+            description: 'Free basic access',
+            price: 0,
+            features: ['Basic features'],
+            billing_cycle: 'monthly',
+            external_plan_id: null,
+            status: 'active',
+            created_at: nowString
+          };
+          currentPlans.push(mockFreePlan);
+          localStorage.setItem('mock_subscription_plans', JSON.stringify(currentPlans));
+          showToast('App created successfully with mock Free Plan.', 'success');
+        } catch (err) {
+          console.warn('Failed to automatically create mock Free Plan:', err);
+          showToast('App created successfully (Sandbox)', 'success');
+        }
       }
 
       localStorage.setItem('mock_brands', JSON.stringify(updatedList));
@@ -259,8 +284,23 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
       } else {
         // Create API
         const created = await createBrand(brandPayload as BrandCreateInput, token);
+
+        // Automatically create a Free Plan for the new brand on the backend
+        try {
+          await createSubscriptionPlan(created.id, {
+            name: 'Free Plan',
+            description: 'Free basic access',
+            price: 0,
+            billing_cycle: 'monthly',
+            status: 'active',
+            features: ['Basic features']
+          }, token);
+        } catch (planErr) {
+          console.warn('Failed to automatically create Free Plan for the brand:', planErr);
+        }
+
         setBrands([...brands, created]);
-        showToast('App created successfully.', 'success');
+        showToast('App created successfully with Free Plan.', 'success');
       }
     }
   };
@@ -347,8 +387,8 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
               fontWeight: 'bold',
               bgcolor: 'white',
               minWidth: 'auto',
-              px: 2.5,
-              py: 1,
+
+
               '&:hover': {
                 borderColor: '#cbd5e1',
                 bgcolor: '#f8fafc',
@@ -356,7 +396,7 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
             }}
             startIcon={<ChevronLeft className="h-4 w-4" />}
           >
-            Back to Registry
+
           </Button>
 
           <div className="flex items-center gap-3">
@@ -398,14 +438,7 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
             <CreditCard className="h-3.5 w-3.5" />
             Subscription Plans
           </button>
-          <button
-            onClick={() => setDetailTab('users')}
-            className={`text-xs font-bold px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${detailTab === 'users' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-              }`}
-          >
-            <Users className="h-3.5 w-3.5" />
-            My Users
-          </button>
+
           <button
             onClick={() => setDetailTab('integration')}
             className={`text-xs font-bold px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${detailTab === 'integration' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
@@ -455,12 +488,7 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
               brandId={selectedDetailBrand.id}
               isEmbedded={true}
             />
-          ) : detailTab === 'users' ? (
-            <BrandUsers
-              portalType={portalType}
-              brandId={selectedDetailBrand.id}
-              isSandbox={isSandbox}
-            />
+
           ) : detailTab === 'integration' ? (
             <BrandIntegrationSettings
               brandId={selectedDetailBrand.id}
