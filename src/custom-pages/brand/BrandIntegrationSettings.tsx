@@ -27,7 +27,9 @@ import {
   BookOpen,
   ChevronDown,
   ChevronUp,
-  Check
+  Check,
+  Download,
+  FileText
 } from 'lucide-react';
 import { fetchBrandById, updateBrand } from '@/api/wytsaas/brand';
 
@@ -300,6 +302,36 @@ export default function BrandIntegrationSettings({ brandId, isSandbox, portalTyp
       </div>
 
       <Divider />
+      {/* API Integration Reference Documentation */}
+        <Paper elevation={0} className="border border-slate-100 p-5 rounded-2xl space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-2 text-slate-700">
+              <BookOpen className="h-4.5 w-4.5 text-slate-500" />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">API Payload Reference</span>
+            </div>
+            
+          </div>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
+                  <div className="space-y-1 max-w-md">
+                    <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <FileText className="h-4 w-4 text-slate-400" />
+                      <span>API Payload Specifications (PDF)</span>
+                    </p>
+                    <p className="text-[11px] font-semibold text-slate-400 leading-relaxed">
+                      Download the complete API integration payload manual containing request headers, JSON request bodies, and expected responses for creating, updating, and cancelling user subscriptions.
+                    </p>
+          
+                  </div>
+                  <a
+                    href="/wytnet_api_payload_reference.pdf"
+                    download="wytnet_api_payload_reference.pdf"
+                    className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 transition-all text-xs font-bold text-white px-5 py-2.5 rounded-xl cursor-pointer shadow-sm hover:shadow-md outline-none"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Download PDF Reference</span>
+                  </a>
+                 </div>
+        </Paper>
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Endpoints Group */}
@@ -450,179 +482,6 @@ export default function BrandIntegrationSettings({ brandId, isSandbox, portalTyp
           </div>
         </Paper>
 
-        {/* API Integration Reference Documentation */}
-        <Paper elevation={0} className="border border-slate-100 p-5 rounded-2xl space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <div className="flex items-center gap-2 text-slate-700">
-              <BookOpen className="h-4.5 w-4.5 text-slate-500" />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">API Payload Reference</span>
-            </div>
-            <IconButton onClick={() => setShowRefDocs(!showRefDocs)} size="small" className="cursor-pointer">
-              {showRefDocs ? <ChevronUp className="h-4.5 w-4.5" /> : <ChevronDown className="h-4.5 w-4.5" />}
-            </IconButton>
-          </div>
-
-          {showRefDocs ? (
-            <div className="space-y-4 pt-2">
-              {/* Tab Selector */}
-              <div className="flex gap-2 border-b border-slate-100 pb-3">
-                <button
-                  type="button"
-                  onClick={() => setActiveRefTab('create')}
-                  className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    activeRefTab === 'create'
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Create User
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveRefTab('update')}
-                  className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    activeRefTab === 'update'
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Update User
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveRefTab('cancel')}
-                  className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    activeRefTab === 'cancel'
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Cancel User
-                </button>
-              </div>
-
-              {activeRefTab === 'create' && (
-                <div className="space-y-4">
-                  <p className="text-[11px] font-semibold text-slate-500 leading-relaxed">
-                    When a customer purchases a plan, WytSaas triggers a POST request to your Create User sync endpoint containing the following request body payload:
-                  </p>
-
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Request Headers</span>
-                    <pre className="bg-slate-950 text-slate-300 rounded-xl p-3.5 text-[10.5px] font-mono overflow-x-auto shadow-inner leading-relaxed">
-{"X-API-Key: <your_configured_api_key>\nContent-Type: application/json"}
-                    </pre>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Request Payload (JSON)</span>
-                    <pre className="bg-slate-950 text-slate-300 rounded-xl p-3.5 text-[10.5px] font-mono overflow-x-auto shadow-inner leading-relaxed select-all">
-{`{
-  "user_id": "99ea7879-1bf4-4df8-8686-2a6230f6b4e3",
-  "user_email": "customer@example.com",
-  "user_name": "John Doe",
-  "plan_id": 1,
-  "plan_name": "Standard Plan",
-  "price": 299.00,
-  "billing_cycle": "monthly"
-}`}
-                    </pre>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Expected Response Payload (JSON)</span>
-                    <pre className="bg-slate-950 text-emerald-400 rounded-xl p-3.5 text-[10.5px] font-mono overflow-x-auto shadow-inner leading-relaxed select-all">
-{`{
-  "success": true,
-  "external_user_id": "APP_CUST_12345",
-  "detail": "User account created and subscription plan activated."
-}`}
-                    </pre>
-                  </div>
-                </div>
-              )}
-
-              {activeRefTab === 'update' && (
-                <div className="space-y-4">
-                  <p className="text-[11px] font-semibold text-slate-500 leading-relaxed">
-                    When a customer switches or upgrades their active plan, WytSaas triggers a POST request to your Update User sync endpoint containing the following payload:
-                  </p>
-
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Request Headers</span>
-                    <pre className="bg-slate-950 text-slate-300 rounded-xl p-3.5 text-[10.5px] font-mono overflow-x-auto shadow-inner leading-relaxed">
-{"X-API-Key: <your_configured_api_key>\nContent-Type: application/json"}
-                    </pre>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Request Payload (JSON)</span>
-                    <pre className="bg-slate-950 text-slate-300 rounded-xl p-3.5 text-[10.5px] font-mono overflow-x-auto shadow-inner leading-relaxed select-all">
-{`{
-  "user_id": "99ea7879-1bf4-4df8-8686-2a6230f6b4e3",
-  "external_user_id": "APP_CUST_12345",
-  "new_plan_id": 2,
-  "new_plan_name": "Premium Plan",
-  "price": 599.00,
-  "billing_cycle": "monthly"
-}`}
-                    </pre>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Expected Response Payload (JSON)</span>
-                    <pre className="bg-slate-950 text-emerald-400 rounded-xl p-3.5 text-[10.5px] font-mono overflow-x-auto shadow-inner leading-relaxed select-all">
-{`{
-  "success": true,
-  "detail": "Subscription plan modified successfully."
-}`}
-                    </pre>
-                  </div>
-                </div>
-              )}
-
-              {activeRefTab === 'cancel' && (
-                <div className="space-y-4">
-                  <p className="text-[11px] font-semibold text-slate-500 leading-relaxed">
-                    When a customer requests cancellation of their billing, WytSaas triggers a POST request to your Cancel User sync endpoint containing the following payload:
-                  </p>
-
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Request Headers</span>
-                    <pre className="bg-slate-950 text-slate-300 rounded-xl p-3.5 text-[10.5px] font-mono overflow-x-auto shadow-inner leading-relaxed">
-{"X-API-Key: <your_configured_api_key>\nContent-Type: application/json"}
-                    </pre>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Request Payload (JSON)</span>
-                    <pre className="bg-slate-950 text-slate-300 rounded-xl p-3.5 text-[10.5px] font-mono overflow-x-auto shadow-inner leading-relaxed select-all">
-{`{
-  "user_id": "99ea7879-1bf4-4df8-8686-2a6230f6b4e3",
-  "external_user_id": "APP_CUST_12345",
-  "action": "deactivate"
-}`}
-                    </pre>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Expected Response Payload (JSON)</span>
-                    <pre className="bg-slate-950 text-emerald-400 rounded-xl p-3.5 text-[10.5px] font-mono overflow-x-auto shadow-inner leading-relaxed select-all">
-{`{
-  "success": true,
-  "detail": "Account deactivated and user plan access revoked."
-}`}
-                    </pre>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-[11px] font-semibold text-slate-400">
-              Click the arrow button to view expected JSON payload formats and header details.
-            </p>
-          )}
-        </Paper>
 
         {/* Form Actions */}
         {!readOnly && (
