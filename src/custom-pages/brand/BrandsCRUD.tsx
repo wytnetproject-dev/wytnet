@@ -10,7 +10,8 @@ import {
   DialogActions,
   Alert,
   Snackbar,
-  Chip
+  Chip,
+  Tooltip
 } from '@mui/material';
 import {
   Plus,
@@ -25,7 +26,10 @@ import {
   CreditCard,
   Images,
   Users,
-  Settings
+  Settings,
+  Lock,
+  CheckCircle2,
+  Trophy
 } from 'lucide-react';
 import type {
   Brand,
@@ -74,7 +78,7 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
   // View State: 'list' | 'create' | 'edit' | 'details'
   const [viewMode, setViewMode] = useState<'list' | 'create' | 'edit' | 'details'>('list');
   const [selectedDetailBrand, setSelectedDetailBrand] = useState<Brand | null>(null);
-  const [detailTab, setDetailTab] = useState<'assets' | 'subscriptions' | 'sso' | 'payment' | 'integration'>('assets');
+  const [detailTab, setDetailTab] = useState<'registration' | 'assets' | 'subscriptions' | 'integration' | 'sso' | 'payment' | 'published'>('registration');
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
   const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
@@ -127,39 +131,80 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
     }
   };
 
+  const getBrandStageIndex = (brand: Brand): number => {
+    const stage = brand.current_stage;
+    if (!stage || stage === 'Brand Submitted' || stage === 'Brand Registration') return 0;
+    if (stage === 'App Asset Submission') return 1;
+    if (stage === 'Subscription Plan Configuration') return 2;
+    if (stage === 'API Integration') return 3;
+    if (
+      stage === 'Waiting for WytPass Review' ||
+      stage === 'whitepass_review' ||
+      stage === 'Waiting for WytPass Review Rejected'
+    ) {
+      return 4;
+    }
+    if (stage === 'WhitePass Integration Completed') return 5;
+    if (
+      stage === 'Waiting for WytPayment Review' ||
+      stage === 'payment_integration' ||
+      stage === 'Waiting for WytPayment Review Rejected'
+    ) {
+      return 5;
+    }
+    if (stage === 'WytPayment Integration Completed' || stage === 'Onboarding Completed') return 6;
+    return 0;
+  };
+
+  const STAGES = [
+    { key: 'registration', label: 'Registration', icon: Users },
+    { key: 'assets', label: 'App Assets', icon: Images },
+    { key: 'subscriptions', label: 'Subscriptions', icon: CreditCard },
+    { key: 'integration', label: 'API Sync', icon: Settings },
+    { key: 'sso', label: 'SSO Review', icon: KeyRound },
+    { key: 'payment', label: 'Payment Review', icon: CreditCard },
+    { key: 'published', label: 'Published & Live', icon: Trophy }
+  ];
+
   // Fetch Brands implementation
   const loadBrands = async (forceMock = false) => {
     setIsLoading(true);
     await loadWatchlistIds();
-    if (forceMock) {
+    let fetchedList: Brand[] = [];
+    if (forceMock || isSandbox) {
       const stored = localStorage.getItem('mock_brands');
-      const initial = stored ? JSON.parse(stored) : DEFAULT_MOCK_BRANDS;
+      fetchedList = stored ? JSON.parse(stored) : DEFAULT_MOCK_BRANDS;
       if (!stored) {
-        localStorage.setItem('mock_brands', JSON.stringify(initial));
+        localStorage.setItem('mock_brands', JSON.stringify(fetchedList));
       }
-      setBrands(initial);
+      setBrands(fetchedList);
       setIsSandbox(true);
-      setIsLoading(false);
-      return;
+    } else {
+      try {
+        fetchedList = await fetchBrands();
+        setBrands(fetchedList);
+        setIsSandbox(false);
+      } catch (err) {
+        console.warn('FastAPI backend connection failed. Enabling mock fallback sandbox.', err);
+        const stored = localStorage.getItem('mock_brands');
+        fetchedList = stored ? JSON.parse(stored) : DEFAULT_MOCK_BRANDS;
+        if (!stored) {
+          localStorage.setItem('mock_brands', JSON.stringify(fetchedList));
+        }
+        setBrands(fetchedList);
+        setIsSandbox(true);
+        showToast('FastAPI server offline. Switched to Mock Sandbox Mode.', 'warning');
+      }
     }
 
-    try {
-      const fetched = await fetchBrands();
-      setBrands(fetched);
-      setIsSandbox(false);
-    } catch (err) {
-      console.warn('FastAPI backend connection failed. Enabling mock fallback sandbox.', err);
-      const stored = localStorage.getItem('mock_brands');
-      const initial = stored ? JSON.parse(stored) : DEFAULT_MOCK_BRANDS;
-      if (!stored) {
-        localStorage.setItem('mock_brands', JSON.stringify(initial));
+    // Sync selectedDetailBrand if open
+    if (selectedDetailBrand) {
+      const updated = fetchedList.find(b => b.id === selectedDetailBrand.id);
+      if (updated) {
+        setSelectedDetailBrand(updated);
       }
-      setBrands(initial);
-      setIsSandbox(true);
-      showToast('FastAPI server offline. Switched to Mock Sandbox Mode.', 'warning');
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -200,7 +245,11 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
   // Open Details View
   const handleOpenDetails = (brand: Brand) => {
     setSelectedDetailBrand(brand);
-    setDetailTab('assets');
+    const stepIdx = getBrandStageIndex(brand);
+    const tabKeys: ('registration' | 'assets' | 'subscriptions' | 'integration' | 'sso' | 'payment' | 'published')[] = [
+      'registration', 'assets', 'subscriptions', 'integration', 'sso', 'payment', 'published'
+    ];
+    setDetailTab(tabKeys[stepIdx]);
     setViewMode('details');
   };
 
@@ -373,7 +422,7 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
 
   if (viewMode === 'details' && selectedDetailBrand) {
     return (
-      <Box className="flex-grow overflow-y-auto h-full flex flex-col relative bg-[#f8fafc] px-8 py-6 select-none space-y-6">
+      <Box className="flex-grow overflow-y-auto no-scrollbar h-full flex flex-col relative px-8 py-6 select-none space-y-6">
         {/* Header with Back button and brand info */}
         <div className="flex items-center gap-4 shrink-0">
           <Button
@@ -420,59 +469,291 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
           </div>
         </div>
 
-        {/* Tab Selection buttons */}
-        <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit shrink-0">
-          <button
-            onClick={() => setDetailTab('assets')}
-            className={`text-xs font-bold px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${detailTab === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-              }`}
-          >
-            <Images className="h-3.5 w-3.5" />
-            App Assets
-          </button>
-          <button
-            onClick={() => setDetailTab('subscriptions')}
-            className={`text-xs font-bold px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${detailTab === 'subscriptions' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-              }`}
-          >
-            <CreditCard className="h-3.5 w-3.5" />
-            Subscription Plans
-          </button>
+        {/* Stepper progress tracker */}
+        {/* Stepper progress tracker */}
+        <div className="bg-white border border-slate-100 rounded-3xl p-4 md:p-6 shadow-sm">
+          <div className="flex items-center gap-1 md:gap-2 overflow-x-auto pb-2 no-scrollbar min-w-0">
+            <div className="flex items-center gap-1 md:gap-2 min-w-max">
+              {STAGES.map((step, idx) => {
+                const currentStageIndex = getBrandStageIndex(selectedDetailBrand);
+                const isCompleted = idx < currentStageIndex;
+                const isActive = idx === currentStageIndex;
+                const isLocked = idx > currentStageIndex;
 
-          <button
-            onClick={() => setDetailTab('integration')}
-            className={`text-xs font-bold px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${detailTab === 'integration' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-              }`}
-          >
-            <Settings className="h-3.5 w-3.5" />
-            API Integration
-          </button>
-          <button
-            onClick={() => setDetailTab('sso')}
-            className={`text-xs font-bold px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${detailTab === 'sso' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-              }`}
-          >
-            <KeyRound className="h-3.5 w-3.5" />
-            SSO Integration
-          </button>
-          <button
-            onClick={() => setDetailTab('payment')}
-            className={`text-xs font-bold px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${detailTab === 'payment' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-              }`}
-          >
-            <CreditCard className="h-3.5 w-3.5" />
-            Payment Integration
-          </button>
+                const isStepSSO = step.key === 'sso';
+                const isStepPayment = step.key === 'payment';
+                const isStepRejected =
+                  (isStepSSO && selectedDetailBrand.current_stage === 'Waiting for WytPass Review Rejected') ||
+                  (isStepPayment && selectedDetailBrand.current_stage === 'Waiting for WytPayment Review Rejected');
+
+                const StepIcon = step.icon;
+
+                const stepButton = (
+                  <button
+                    disabled={isLocked}
+                    onClick={() => setDetailTab(step.key as any)}
+                    className={`flex items-center gap-2 p-2 md:p-2.5 rounded-xl md:rounded-2xl transition-all text-left relative focus:outline-none shrink-0 ${isActive
+                      ? (isStepRejected ? 'bg-rose-600 text-white shadow-md' : 'bg-slate-900 text-white shadow-md')
+                      : isCompleted
+                        ? 'text-slate-700 hover:bg-slate-50 cursor-pointer'
+                        : 'text-slate-300 cursor-not-allowed'
+                      }`}
+                  >
+                    <div className={`w-7 h-7 md:w-8 md:h-8 rounded-lg md:rounded-xl flex items-center justify-center font-bold text-[10px] md:text-xs shrink-0 transition-colors ${isActive
+                      ? (isStepRejected ? 'bg-white text-rose-600' : 'bg-white text-slate-900')
+                      : isCompleted
+                        ? 'bg-emerald-50 text-emerald-600'
+                        : 'bg-slate-50 text-slate-400'
+                      }`}>
+                      {isStepRejected ? (
+                        <AlertTriangle className="w-4.5 h-4.5 md:w-5 md:h-5 text-rose-600" />
+                      ) : isCompleted ? (
+                        <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5" />
+                      ) : isLocked ? (
+                        <Lock className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                      ) : (
+                        idx + 1
+                      )}
+                    </div>
+
+                    <div className="pr-1 md:pr-2">
+                      <div className={`text-[8px] md:text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-white/60' : 'text-slate-400'
+                        }`}>
+                        {isStepRejected ? 'REJECTED' : `Stage ${idx + 1}`}
+                      </div>
+                      <div className="text-[10px] md:text-xs font-black whitespace-nowrap flex items-center gap-1">
+                        <StepIcon className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                        <span className="hidden sm:inline">{step.label}</span>
+                        <span className="sm:hidden">{step.label.split(' ')[0]}</span>
+                      </div>
+                    </div>
+                  </button>
+                );
+
+                const rejectReason = isStepRejected
+                  ? (isStepSSO 
+                      ? selectedDetailBrand.whitepass_review?.review_notes 
+                      : selectedDetailBrand.wytpayment_review?.review_notes)
+                  : null;
+
+                return (
+                  <div
+                    key={step.key}
+                    className="flex items-center shrink-0"
+                  >
+                    {rejectReason ? (
+                      <Tooltip title={`Rejection Reason: ${rejectReason}`} arrow>
+                        <span>{stepButton}</span>
+                      </Tooltip>
+                    ) : (
+                      stepButton
+                    )}
+
+                    {idx < STAGES.length - 1 && (
+                      <div className="w-4 md:w-8 lg:w-12 h-0.5 rounded-full bg-slate-100 mx-1 md:mx-2 shrink-0 relative">
+                        <div
+                          className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: isCompleted ? '100%' : '0%',
+                            backgroundColor: '#10b981'
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
+
         {/* Tab Workspace content */}
-        <div className="bg-white rounded-2xl border border-slate-100 flex flex-col p-6 shadow-sm">
-          {detailTab === 'sso' ? (
+        <div className="bg-white rounded-3xl border border-slate-100 flex flex-col p-8 shadow-sm">
+          {detailTab === 'registration' ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
+                    <Users className="h-4.5 w-4.5 text-slate-500" />
+                    <span>Brand Registration Profile</span>
+                  </h3>
+                  <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+                    Your submitted primary brand registration metadata.
+                  </p>
+                </div>
+                {/* <div>
+                  {getBrandStageIndex(selectedDetailBrand) > 0 ? (
+                    <Chip
+                      icon={<CheckCircle2 className="h-3.5 w-3.5" style={{ color: '#047857' }} />}
+                      label="VERIFIED & APPROVED"
+                      size="small"
+                      sx={{ bgcolor: '#ecfdf5', color: '#047857', fontWeight: 'bold', fontSize: '10px' }}
+                    />
+                  ) : (
+                    <Chip
+                      icon={<RefreshCw className="h-3 w-3 animate-spin" />}
+                      label="AWAITING ADMIN VERIFICATION"
+                      size="small"
+                      color="warning"
+                      sx={{ fontWeight: 'bold', fontSize: '10px' }}
+                    />
+                  )}
+                </div> */}
+                {/* Direct developer transition for Stage 1 (No Admin Verification Required) */}
+                {getBrandStageIndex(selectedDetailBrand) === 0 && (
+                  <div className="mt-8 border-t border-slate-100 pt-6 flex justify-end">
+                    <Button
+                      variant="contained"
+                      onClick={async () => {
+                        if (isSandbox) {
+                          const updatedList = brands.map(b => b.id === selectedDetailBrand.id ? {
+                            ...b,
+                            current_stage: 'App Asset Submission',
+                            updated_at: new Date().toISOString()
+                          } : b);
+                          localStorage.setItem('mock_brands', JSON.stringify(updatedList));
+                          await loadBrands(true);
+                          setDetailTab('assets');
+                          showToast('Profile confirmed! Stage 2 unlocked: App Asset Submission.', 'success');
+                        } else {
+                          const token = getAuthToken();
+                          if (!token) {
+                            showToast('Authentication token missing.', 'error');
+                            return;
+                          }
+                          try {
+                            await updateBrand(selectedDetailBrand.id, {
+                              current_stage: 'App Asset Submission'
+                            }, token);
+                            await loadBrands();
+                            setDetailTab('assets');
+                            showToast('Profile confirmed! Stage 2 unlocked: App Asset Submission.', 'success');
+                          } catch (err: any) {
+                            showToast(err.message || 'Failed to update onboarding stage.', 'error');
+                          }
+                        }
+                      }}
+                      sx={{
+                        bgcolor: '#10b981',
+                        color: 'white',
+                        textTransform: 'none',
+                        fontWeight: 'bold',
+                        borderRadius: '10px',
+                        px: 3.5,
+                        boxShadow: 'none',
+                        '&:hover': {
+                          bgcolor: '#059669',
+                          boxShadow: 'none'
+                        }
+                      }}
+                      startIcon={<Check className="h-4 w-4" />}
+                    >
+                      Confirm Profile & Proceed
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">App Name</span>
+                    <span className="text-sm font-extrabold text-slate-700">{selectedDetailBrand.name}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Slug Identifier</span>
+                    <span className="text-xs font-mono text-slate-500">/{selectedDetailBrand.slug}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Company Name</span>
+                    <span className="text-sm font-bold text-slate-700">{selectedDetailBrand.company_name || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Short Summary</span>
+                    <p className="text-xs font-semibold text-slate-600 mt-1">{selectedDetailBrand.short_description || 'No summary provided.'}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Full Description</span>
+                    <p className="text-xs font-semibold text-slate-600 mt-1 whitespace-pre-line leading-relaxed">
+                      {selectedDetailBrand.full_description || 'No description provided.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {selectedDetailBrand.logo_url && (
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Logo Image</span>
+                      <img src={selectedDetailBrand.logo_url} alt="App logo" className="h-16 w-16 object-contain rounded-2xl border border-slate-100 p-1" />
+                    </div>
+                  )}
+                  {selectedDetailBrand.banner_url && (
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Banner Showcase</span>
+                      <img src={selectedDetailBrand.banner_url} alt="App banner" className="w-full max-h-24 object-cover rounded-2xl border border-slate-100" />
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">App Classifications</span>
+                    <div className="flex gap-1.5 flex-wrap mt-1">
+                      {(() => {
+                        const types = selectedDetailBrand.brand_type
+                          ? (Array.isArray(selectedDetailBrand.brand_type) ? selectedDetailBrand.brand_type : [selectedDetailBrand.brand_type])
+                          : ['saas'];
+                        return types.map((t, idx) => (
+                          <Chip key={idx} label={t} size="small" sx={{ fontSize: '9px', height: '18px', textTransform: 'uppercase', fontWeight: 'bold' }} />
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Search & Tags</span>
+                    <div className="flex gap-1.5 flex-wrap mt-1">
+                      {selectedDetailBrand.tags && selectedDetailBrand.tags.length > 0 ? (
+                        selectedDetailBrand.tags.map((tag) => (
+                          <Chip key={tag.id} label={tag.name} size="small" sx={{ fontSize: '9px', height: '18px', fontWeight: 'bold', bgcolor: '#eff6ff', color: '#1d4ed8' }} />
+                        ))
+                      ) : (
+                        <span className="text-xs text-slate-400">No tags configured</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+
+            </div>
+          ) : detailTab === 'assets' ? (
+            <BrandAssets
+              user={user}
+              portalType={portalType}
+              brandId={selectedDetailBrand.id}
+              isEmbedded={true}
+              onRefreshBrand={loadBrands}
+            />
+          ) : detailTab === 'subscriptions' ? (
+            <BrandSubscriptions
+              user={user}
+              portalType={portalType}
+              brandId={selectedDetailBrand.id}
+              isEmbedded={true}
+              onRefreshBrand={loadBrands}
+            />
+          ) : detailTab === 'integration' ? (
+            <BrandIntegrationSettings
+              brandId={selectedDetailBrand.id}
+              isSandbox={isSandbox}
+              portalType={portalType}
+              onRefreshBrand={loadBrands}
+            />
+          ) : detailTab === 'sso' ? (
             <SSOIntegration
               user={user}
               portalType={portalType}
               brandId={selectedDetailBrand.id}
               isEmbedded={true}
+              onRefreshBrand={loadBrands}
             />
           ) : detailTab === 'payment' ? (
             <PaymentIntegration
@@ -480,28 +761,84 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
               portalType={portalType}
               brandId={selectedDetailBrand.id}
               isEmbedded={true}
-            />
-          ) : detailTab === 'assets' ? (
-            <BrandAssets
-              user={user}
-              portalType={portalType}
-              brandId={selectedDetailBrand.id}
-              isEmbedded={true}
-            />
-
-          ) : detailTab === 'integration' ? (
-            <BrandIntegrationSettings
-              brandId={selectedDetailBrand.id}
-              isSandbox={isSandbox}
-              portalType={portalType}
+              onRefreshBrand={loadBrands}
             />
           ) : (
-            <BrandSubscriptions
-              user={user}
-              portalType={portalType}
-              brandId={selectedDetailBrand.id}
-              isEmbedded={true}
-            />
+            <div className="flex flex-col items-center justify-center text-center py-12 px-4 space-y-6">
+              <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-3xl flex items-center justify-center shadow-md animate-bounce">
+                <Trophy className="w-10 h-10" />
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-2xl font-black text-slate-800">
+                  Congratulations! Your App is Live!
+                </h3>
+                <p className="text-sm font-semibold text-slate-500 max-w-md leading-relaxed">
+                  Your application has successfully completed all onboarding stages and technical reviews. It is now published live on the Wytnet Marketplace!
+                </p>
+              </div>
+
+              {selectedDetailBrand.current_stage !== 'Onboarding Completed' ? (
+                <div className="max-w-md w-full border border-dashed border-amber-200 bg-amber-50/20 p-5 rounded-3xl space-y-4">
+                  <div className="flex items-center gap-1.5 justify-center">
+                    <RefreshCw className="w-4.5 h-4.5 text-amber-600 animate-spin" />
+                    <span className="text-xs font-black text-amber-800 uppercase tracking-wider">Awaiting Final Publishing Review</span>
+                  </div>
+                  <p className="text-[11.5px] font-semibold text-amber-700 leading-normal">
+                    Both WytPass SSO and WytPayment gateway integrations have been approved. The application is pending final review and approval by administrators.
+                  </p>
+
+                  {isSandbox && (
+                    <div className="pt-2 border-t border-amber-100 mt-2">
+                      <Button
+                        variant="contained"
+                        onClick={async () => {
+                          const updatedList = brands.map(b => b.id === selectedDetailBrand.id ? {
+                            ...b,
+                            current_stage: 'Onboarding Completed',
+                            status: 'Approved'
+                          } : b);
+                          localStorage.setItem('mock_brands', JSON.stringify(updatedList));
+                          await loadBrands(true);
+                          showToast('Final onboarding review approved by admin (Sandbox)! App is now Published.', 'success');
+                        }}
+                        sx={{
+                          bgcolor: '#db2777',
+                          color: 'white',
+                          textTransform: 'none',
+                          fontWeight: 'bold',
+                          borderRadius: '10px',
+                          '&:hover': { bgcolor: '#be185d' }
+                        }}
+                      >
+                        Mock Final Approval
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex gap-4">
+                  <Button
+                    variant="contained"
+                    onClick={() => {
+                      window.location.hash = `#marketplace/app/${selectedDetailBrand.slug}`;
+                    }}
+                    sx={{
+                      bgcolor: '#10b981',
+                      color: 'white',
+                      textTransform: 'none',
+                      fontWeight: 'bold',
+                      borderRadius: '12px',
+                      px: 4,
+                      py: 1.5,
+                      '&:hover': { bgcolor: '#059669' }
+                    }}
+                  >
+                    View on Marketplace
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </Box>
@@ -509,7 +846,7 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
   }
 
   return (
-    <Box className="flex-grow bg-[#f8fafc] overflow-y-auto px-8 py-6 select-none space-y-6">
+    <Box className="flex-grow bg-[#f8fafc] overflow-y-auto no-scrollbar px-8 py-6 select-none space-y-6">
       {/* Toast notifications */}
       <Snackbar
         open={toastOpen}

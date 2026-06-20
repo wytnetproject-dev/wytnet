@@ -25,7 +25,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import type { Brand } from '@/api/wytsaas/brand';
-import { fetchBrands } from '@/api/wytsaas/brand';
+import { fetchBrands, updateBrand } from '@/api/wytsaas/brand';
 import type {
   BrandSubscriptionPlan,
   BrandSubscriptionPlanCreateInput,
@@ -46,9 +46,11 @@ interface BrandSubscriptionsProps {
   portalType: 'wytsaas' | 'wytpass';
   brandId?: number;
   isEmbedded?: boolean;
+  onRefreshBrand?: () => void;
+  readOnly?: boolean;
 }
 
-export default function BrandSubscriptions({ user: _user, portalType, brandId, isEmbedded }: BrandSubscriptionsProps) {
+export default function BrandSubscriptions({ user: _user, portalType, brandId, isEmbedded, onRefreshBrand, readOnly = false }: BrandSubscriptionsProps) {
   const primaryColor = portalType === 'wytsaas' ? '#0066cc' : '#9333ea';
   const primaryHoverColor = portalType === 'wytsaas' ? '#0052a3' : '#7e22ce';
 
@@ -290,6 +292,48 @@ export default function BrandSubscriptions({ user: _user, portalType, brandId, i
     }
   };
 
+  const handleProceedToNextStage = async () => {
+    if (!brandId) return;
+
+    if (isSandbox) {
+      const stored = localStorage.getItem('mock_brands');
+      const mockList = stored ? JSON.parse(stored) : [];
+      const updatedList = mockList.map((b: Brand) =>
+        b.id === brandId
+          ? {
+              ...b,
+              current_stage: 'API Integration',
+              updated_at: new Date().toISOString()
+            }
+          : b
+      );
+      localStorage.setItem('mock_brands', JSON.stringify(updatedList));
+      showToast('Subscription plans confirmed! Stage 4 unlocked: API Integration.', 'success');
+      if (onRefreshBrand) {
+        onRefreshBrand();
+      }
+    } else {
+      const token = getAuthToken();
+      if (!token) {
+        showToast('Authentication token missing.', 'error');
+        return;
+      }
+      try {
+        await updateBrand(brandId, {
+          current_stage: 'API Integration'
+        }, token);
+        showToast('Subscription plans confirmed! Stage 4 unlocked: API Integration.', 'success');
+        if (onRefreshBrand) {
+          onRefreshBrand();
+        }
+      } catch (err: any) {
+        showToast(err.message || 'Failed to update onboarding stage.', 'error');
+      }
+    }
+  };
+
+  const currentBrand = brandId ? brands.find(b => b.id === brandId) : null;
+
   return (
     <Box className={`select-none ${isEmbedded ? 'bg-transparent px-0 py-0 space-y-4' : 'bg-[#f8fafc] px-8 py-6 space-y-6 flex-grow overflow-y-auto h-full'}`}>
       {/* Toast SnackBar */}
@@ -373,30 +417,32 @@ export default function BrandSubscriptions({ user: _user, portalType, brandId, i
               Refresh
             </Button>
 
-            <Button
-              variant="contained"
-              size="medium"
-              onClick={handleOpenCreate}
-              disabled={brands.length === 0}
-              sx={{
-                bgcolor: primaryColor,
-                borderRadius: '12px',
-                textTransform: 'none',
-                fontWeight: 'bold',
-                boxShadow: 'none',
-                '&:hover': {
-                  bgcolor: primaryHoverColor,
+            {!readOnly && (
+              <Button
+                variant="contained"
+                size="medium"
+                onClick={handleOpenCreate}
+                disabled={brands.length === 0}
+                sx={{
+                  bgcolor: primaryColor,
+                  borderRadius: '12px',
+                  textTransform: 'none',
+                  fontWeight: 'bold',
                   boxShadow: 'none',
-                },
-                '&:disabled': {
-                  bgcolor: '#cbd5e1',
-                  color: '#94a3b8'
-                }
-              }}
-              startIcon={<Plus className="h-4 w-4" />}
-            >
-              Create Plan
-            </Button>
+                  '&:hover': {
+                    bgcolor: primaryHoverColor,
+                    boxShadow: 'none',
+                  },
+                  '&:disabled': {
+                    bgcolor: '#cbd5e1',
+                    color: '#94a3b8'
+                  }
+                }}
+                startIcon={<Plus className="h-4 w-4" />}
+              >
+                Create Plan
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -481,7 +527,7 @@ export default function BrandSubscriptions({ user: _user, portalType, brandId, i
             <Typography className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">
               {filteredPlans.length} plans active
             </Typography>
-            {isEmbedded && (
+            {isEmbedded && !readOnly && (
               <Button
                 variant="contained"
                 size="small"
@@ -519,10 +565,37 @@ export default function BrandSubscriptions({ user: _user, portalType, brandId, i
           getBrandName={getBrandName}
           onEdit={handleOpenEdit}
           onDelete={handleOpenDelete}
+          readOnly={readOnly}
         />
+
+        {/* Bottom Actions Panel inside Paper */}
+        {isEmbedded && !readOnly && currentBrand && currentBrand.current_stage === 'Subscription Plan Configuration' && (
+          <Box sx={{ p: 3, borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', gap: 2, bgcolor: '#f8fafc' }}>
+            <Button
+              onClick={handleProceedToNextStage}
+              variant="contained"
+              sx={{
+                bgcolor: '#10b981',
+                color: 'white',
+                textTransform: 'none',
+                fontWeight: 'bold',
+                borderRadius: '10px',
+                px: 3.5,
+                boxShadow: 'none',
+                '&:hover': {
+                  bgcolor: '#059669',
+                  boxShadow: 'none'
+                }
+              }}
+              startIcon={<Check className="h-4 w-4" />}
+            >
+              Confirm Plans & Proceed
+            </Button>
+          </Box>
+        )}
       </Paper>
 
-      {/* Modularized Dialog Form */}
+      {/* Subscription Dialog */}
       <SubscriptionDialog
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
@@ -530,11 +603,11 @@ export default function BrandSubscriptions({ user: _user, portalType, brandId, i
         editingPlan={editingPlan}
         brands={brands}
         primaryColor={primaryColor}
-        primaryHoverColor={primaryHoverColor}
+        primaryHoverColor={portalType === 'wytsaas' ? '#0052a3' : '#7e22ce'}
         brandId={brandId}
       />
 
-      {/* DELETE CONFIRM DIALOG */}
+      {/* Delete Dialog */}
       <Dialog
         open={isDeleteOpen}
         onClose={() => setIsDeleteOpen(false)}

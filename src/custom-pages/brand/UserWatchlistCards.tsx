@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Box,
-  CircularProgress,
-  Alert,
-  Snackbar
+  CircularProgress
 } from '@mui/material';
 import {
   RefreshCw,
@@ -30,20 +28,13 @@ export default function UserWatchlistCards({ user: _user }: UserWatchlistCardsPr
   const [items, setItems] = useState<SubscriptionItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Toast Alerts State
-  const [toastOpen, setToastOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastSeverity, setToastSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
+
 
   const getAuthToken = () => {
     return localStorage.getItem('wytsaas_token') || '';
   };
 
-  const showToast = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
-    setToastMessage(message);
-    setToastSeverity(severity);
-    setToastOpen(true);
-  };
+
 
   const loadSubscriptions = async () => {
     setIsLoading(true);
@@ -151,17 +142,7 @@ export default function UserWatchlistCards({ user: _user }: UserWatchlistCardsPr
 
   return (
     <Box className="flex-grow bg-[#f8fafc] overflow-y-auto px-8 py-6 select-none space-y-6">
-      {/* Toast notifications */}
-      <Snackbar
-        open={toastOpen}
-        autoHideDuration={4000}
-        onClose={() => setToastOpen(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert onClose={() => setToastOpen(false)} severity={toastSeverity} sx={{ width: '100%' }}>
-          {toastMessage}
-        </Alert>
-      </Snackbar>
+
 
       {/* Header controls bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

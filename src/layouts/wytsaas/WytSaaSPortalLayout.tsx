@@ -9,6 +9,7 @@ import BrandsCRUD from '@/custom-pages/brand/BrandsCRUD';
 import AdminBrands from '@/custom-pages/admin/AdminBrands';
 import WytPassApprovals from '@/custom-pages/admin/WytPassApprovals';
 import WytPaymentApprovals from '@/custom-pages/admin/WytPaymentApprovals';
+import MarketplaceBanners from '@/custom-pages/admin/MarketplaceBanners';
 import MyAccountModal from '@/custom-pages/my-account/MyAccountModal';
 import WatchlistCRUD from '@/custom-pages/brand/WatchlistCRUD';
 import UserWatchlistCards from '@/custom-pages/brand/UserWatchlistCards';
@@ -107,6 +108,8 @@ export default function WytSaaSPortalLayout({ onSelectProduct: _onSelectProduct 
                 <WytPassApprovals user={user} portalType="wytsaas" />
               ) : activeMenu === 'wytpayment-approvals' ? (
                 <WytPaymentApprovals user={user} portalType="wytsaas" />
+              ) : activeMenu === 'marketplace-banners' ? (
+                <MarketplaceBanners user={user} />
               ) : activeMenu === 'users' ? (
                 <UsersCRUD user={user} />
               ) : activeMenu === 'banking-info' ? (

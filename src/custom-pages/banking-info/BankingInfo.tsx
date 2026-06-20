@@ -9,8 +9,7 @@ import {
   Loader2, 
   Pencil, 
   Trash2, 
-  Plus, 
-  CheckCircle2, 
+  CheckCircle2,  
   AlertCircle, 
   ChevronRight,
   ShieldCheck

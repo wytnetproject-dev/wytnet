@@ -635,11 +635,11 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
 
   // Filter other apps by the same developer (or fallback to general recommendations if none)
   const developerApps = allApps
-    .filter(a => a.company_name === app.company_name && a.id !== app.id)
+    .filter(a => a.company_name === app.company_name && a.id !== app.id && a.status?.toLowerCase() === 'approved' && a.current_stage === 'Onboarding Completed')
     .slice(0, 5);
 
   const fallbackRecommendations = allApps
-    .filter(a => a.id !== app.id)
+    .filter(a => a.id !== app.id && a.status?.toLowerCase() === 'approved' && a.current_stage === 'Onboarding Completed')
     .slice(0, 5);
 
   const relatedApps = developerApps.length > 0 ? developerApps : fallbackRecommendations;
@@ -1312,56 +1312,58 @@ export default function AppDetail({ app, onBack, allApps }: AppDetailProps) {
             </div>
 
             {/* More by Developer / Related Apps */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between group cursor-pointer">
-                <h3 className="text-sm font-semibold text-slate-900 hover:text-[#01875f] flex items-center gap-1.5">
-                  <span>More by {app.company_name || 'Savemom Private Limited'}</span>
-                  <ArrowRight className="h-3.5 w-3.5 text-slate-600 group-hover:text-[#01875f] group-hover:translate-x-0.5 transition-all" />
-                </h3>
-              </div>
-
-              {/* Side Apps List */}
+            {relatedApps.length > 0 && (
               <div className="space-y-4">
-                {relatedApps.map((relatedApp) => (
-                  <div
-                    key={relatedApp.id}
-                    onClick={() => {
-                      window.location.hash = `#marketplace/app/${relatedApp.slug}`;
-                      window.scrollTo(0, 0);
-                    }}
-                    className="flex items-center gap-4 group cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-all"
-                  >
-                    {/* Small Icon */}
-                    <div className="h-14 w-14 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-                      {relatedApp.logo_url ? (
-                        <img src={relatedApp.logo_url} alt={relatedApp.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="h-full w-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-lg select-none">
-                          {relatedApp.name[0]}
-                        </div>
-                      )}
-                    </div>
+                <div className="flex items-center justify-between group cursor-pointer">
+                  <h3 className="text-sm font-semibold text-slate-900 hover:text-[#01875f] flex items-center gap-1.5">
+                    <span>More by {app.company_name || 'Savemom Private Limited'}</span>
+                    <ArrowRight className="h-3.5 w-3.5 text-slate-600 group-hover:text-[#01875f] group-hover:translate-x-0.5 transition-all" />
+                  </h3>
+                </div>
 
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-800 truncate group-hover:text-[#01875f] transition-colors">
-                        {relatedApp.name}
-                      </p>
-                      <span className="text-[11px] text-slate-400 font-medium truncate block mt-0.5">
-                        {relatedApp.company_name || 'Savemom Private Limited'}
-                      </span>
-                      <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 mt-1">
-                        <span>
-                          {relatedApp.reviews && relatedApp.reviews.length > 0
-                            ? (relatedApp.reviews.reduce((acc, r) => acc + r.rating, 0) / relatedApp.reviews.length).toFixed(1)
-                            : '0.0'}
+                {/* Side Apps List */}
+                <div className="space-y-4">
+                  {relatedApps.map((relatedApp) => (
+                    <div
+                      key={relatedApp.id}
+                      onClick={() => {
+                        window.location.hash = `#marketplace/app/${relatedApp.slug}`;
+                        window.scrollTo(0, 0);
+                      }}
+                      className="flex items-center gap-4 group cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-all"
+                    >
+                      {/* Small Icon */}
+                      <div className="h-14 w-14 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                        {relatedApp.logo_url ? (
+                          <img src={relatedApp.logo_url} alt={relatedApp.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-lg select-none">
+                            {relatedApp.name[0]}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate group-hover:text-[#01875f] transition-colors">
+                          {relatedApp.name}
+                        </p>
+                        <span className="text-[11px] text-slate-400 font-medium truncate block mt-0.5">
+                          {relatedApp.company_name || 'Savemom Private Limited'}
                         </span>
-                        <Star className="h-3 w-3 fill-slate-600 text-slate-600" />
+                        <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 mt-1">
+                          <span>
+                            {relatedApp.reviews && relatedApp.reviews.length > 0
+                              ? (relatedApp.reviews.reduce((acc, r) => acc + r.rating, 0) / relatedApp.reviews.length).toFixed(1)
+                              : '0.0'}
+                          </span>
+                          <Star className="h-3 w-3 fill-slate-600 text-slate-600" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
           </div>
 

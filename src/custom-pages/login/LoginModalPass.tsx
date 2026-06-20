@@ -10,7 +10,7 @@ import IconButton from '@mui/material/IconButton';
 import Link from '@mui/material/Link';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
-import { Mail, Lock, ShieldCheck, Eye, EyeOff, Globe, ChevronDown, Smartphone, Fingerprint } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, Eye, EyeOff, Smartphone, Fingerprint } from 'lucide-react';
 
 interface LoginModalProps {
   isOpen: boolean;

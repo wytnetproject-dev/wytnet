@@ -56,14 +56,25 @@ export default function Marketplace({ currentHash }: MarketplaceProps) {
     checkSelectedApp();
   }, [currentHash, apps]);
 
-  // Auto-scrolling banner data
-  const bannerSlides = [
+  // Type for dynamic banner slides
+  interface BannerSlide {
+    title: string;
+    subtitle?: string;
+    description?: string;
+    badge?: string;
+    bgImage?: string;
+    bg_image?: string;
+    icon?: string;
+  }
+
+  // Fallback static banners
+  const DEFAULT_BANNER_SLIDES: BannerSlide[] = [
     {
       title: "WhitePass SSO",
       subtitle: "Universal Identity",
       description: "Secure, decentralized single sign-on system for next-generation apps and AI agents.",
       badge: "Featured App",
-      bgGradient: "from-blue-600 to-indigo-900",
+      bgImage: "from-blue-600 to-indigo-900",
       icon: "https://placehold.co/120x120/0066cc/ffffff?text=WP",
     },
     {
@@ -71,7 +82,7 @@ export default function Marketplace({ currentHash }: MarketplaceProps) {
       subtitle: "Agent Micropayments",
       description: "Enable your AI agents to execute sub-cent transactions instantly with absolute security.",
       badge: "Trending",
-      bgGradient: "from-purple-600 to-pink-900",
+      bgImage: "from-purple-600 to-pink-900",
       icon: "https://placehold.co/120x120/7e22ce/ffffff?text=WP",
     },
     {
@@ -79,18 +90,40 @@ export default function Marketplace({ currentHash }: MarketplaceProps) {
       subtitle: "AI Cognition",
       description: "Low-latency decentralized task distribution across global GPU node clusters.",
       badge: "Developer Choice",
-      bgGradient: "from-emerald-600 to-teal-900",
+      bgImage: "from-emerald-600 to-teal-900",
       icon: "https://placehold.co/120x120/0f766e/ffffff?text=NF",
     }
   ];
 
+  const [bannerSlides, setBannerSlides] = useState<BannerSlide[]>(DEFAULT_BANNER_SLIDES);
+
+  // Fetch banners from backend
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/brands/banners');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.items && data.items.length > 0) {
+            setBannerSlides(data.items);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch banners, using static fallback", err);
+      }
+    };
+    fetchBanners();
+  }, []);
+
   // Auto-scroll effect for banner
   useEffect(() => {
+    if (bannerSlides.length === 0) return;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % bannerSlides.length);
     }, 4000);
     return () => clearInterval(timer);
-  }, []);
+  }, [bannerSlides]);
+
 
   // Fetch apps/brands from local storage or backend
   useEffect(() => {
@@ -179,8 +212,20 @@ export default function Marketplace({ currentHash }: MarketplaceProps) {
           {bannerSlides.map((slide, idx) => (
             <div
               key={idx}
-              className={`absolute inset-0 w-full h-full flex flex-col md:flex-row items-center justify-between p-8 md:p-12 transition-opacity duration-700 ease-in-out bg-gradient-to-r ${slide.bgGradient} ${currentSlide === idx ? 'opacity-100 z-10' : 'opacity-0 z-0'
-                }`}
+              className={`absolute inset-0 w-full h-full flex flex-col md:flex-row items-center justify-between p-8 md:p-12 transition-opacity duration-700 ease-in-out ${
+                (slide.bgImage || slide.bg_image || '').startsWith('from-')
+                  ? `bg-gradient-to-r ${slide.bgImage || slide.bg_image}`
+                  : slide.bgImage || slide.bg_image
+                  ? ''
+                  : 'bg-gradient-to-r from-blue-600 to-indigo-900'
+              } ${currentSlide === idx ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+              style={
+                slide.bgImage || slide.bg_image
+                  ? (slide.bgImage || slide.bg_image || '').startsWith('from-')
+                    ? undefined
+                    : { backgroundImage: `url(${slide.bgImage || slide.bg_image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  : undefined
+              }
             >
               <div className="max-w-xl space-y-4">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/20 backdrop-blur-md text-white">

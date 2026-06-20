@@ -54,14 +54,42 @@ export default function BrandTable({
     }
   };
 
-  const getStageChipLabel = (stageVal: string) => {
-    let normalized = stageVal.replace('_', ' ');
-    if (normalized.toLowerCase() === 'waiting for wytpass review') {
-      normalized = 'Waiting for Review';
-    } else if (normalized.toLowerCase() === 'waiting for wytpass review rejected') {
-      normalized = 'Waiting for Review Rejected';
+  const getStageChipConfig = (stageVal: string) => {
+    const stage = stageVal || '';
+    if (stage === 'Brand Submitted' || stage === 'Brand Registration') {
+      return { label: '1. Registration', color: '#64748b', bg: '#f1f5f9' };
     }
-    return normalized.toUpperCase();
+    if (stage === 'App Asset Submission') {
+      return { label: '2. App Assets', color: '#0284c7', bg: '#e0f2fe' };
+    }
+    if (stage === 'Subscription Plan Configuration') {
+      return { label: '3. Subscriptions', color: '#7c3aed', bg: '#f3e8ff' };
+    }
+    if (stage === 'API Integration') {
+      return { label: '4. API Sync', color: '#db2777', bg: '#fce7f3' };
+    }
+    if (stage === 'Waiting for WytPass Review' || stage === 'whitepass_review') {
+      return { label: '5. SSO Review', color: '#ea580c', bg: '#ffedd5' };
+    }
+    if (stage === 'Waiting for WytPass Review Rejected') {
+      return { label: '5. SSO Rejected', color: '#dc2626', bg: '#fee2e2' };
+    }
+    if (stage === 'WhitePass Integration Completed') {
+      return { label: '5. SSO Approved', color: '#16a34a', bg: '#dcfce7' };
+    }
+    if (stage === 'Waiting for WytPayment Review' || stage === 'payment_integration') {
+      return { label: '6. Payment Review', color: '#d97706', bg: '#fef3c7' };
+    }
+    if (stage === 'Waiting for WytPayment Review Rejected') {
+      return { label: '6. Payment Rejected', color: '#dc2626', bg: '#fee2e2' };
+    }
+    if (stage === 'WytPayment Integration Completed') {
+      return { label: '6. Payment Approved', color: '#16a34a', bg: '#dcfce7' };
+    }
+    if (stage === 'Onboarding Completed') {
+      return { label: '7. Published & Live', color: '#0d9488', bg: '#ccfbf1' };
+    }
+    return { label: stage.replace('_', ' ').toUpperCase(), color: '#475569', bg: '#f1f5f9' };
   };
 
   if (isLoading) {
@@ -217,9 +245,46 @@ export default function BrandTable({
                 </Typography>
               </TableCell>
               <TableCell sx={{ py: 2 }}>
-                <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: 'text.secondary' }}>
-                  {getStageChipLabel(brand.current_stage)}
-                </Typography>
+                {(() => {
+                  const config = getStageChipConfig(brand.current_stage);
+                  const isSSORejected = brand.current_stage === 'Waiting for WytPass Review Rejected';
+                  const isPaymentRejected = brand.current_stage === 'Waiting for WytPayment Review Rejected';
+                  const rejectReason = isSSORejected 
+                    ? brand.whitepass_review?.review_notes 
+                    : isPaymentRejected 
+                      ? brand.wytpayment_review?.review_notes 
+                      : null;
+                  
+                  const chipEl = (
+                    <Chip
+                      label={config.label}
+                      size="small"
+                      sx={{
+                        color: config.color,
+                        bgcolor: config.bg,
+                        fontWeight: 'bold',
+                        fontSize: '10px',
+                        borderRadius: '6px',
+                        border: `1px solid ${config.color}20`
+                      }}
+                    />
+                  );
+
+                  return (
+                    <div className="flex flex-col gap-1 items-start">
+                      {rejectReason ? (
+                        <Tooltip title={`Rejection Reason: ${rejectReason}`} arrow>
+                          <span>{chipEl}</span>
+                        </Tooltip>
+                      ) : chipEl}
+                      {rejectReason && (
+                        <Typography sx={{ fontSize: '10.5px', color: '#dc2626', fontWeight: 600, mt: 0.5, maxWidth: '160px', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.2 }}>
+                          Reason: {rejectReason}
+                        </Typography>
+                      )}
+                    </div>
+                  );
+                })()}
               </TableCell>
               <TableCell sx={{ py: 2 }}>
                 <Chip

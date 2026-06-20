@@ -103,7 +103,7 @@ const DEFAULT_MOCK_USERS: UserProfile[] = [
   }
 ];
 
-export default function UsersCRUD({ user }: UsersCRUDProps) {
+export default function UsersCRUD({ user: _user }: UsersCRUDProps) {
   const primaryColor = '#3b82f6'; // Sleek WytSaaS Blue for Users admin
   const primaryHoverColor = '#2563eb';
 

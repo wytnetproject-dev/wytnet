@@ -22,6 +22,7 @@ interface SubscriptionTableProps {
   getBrandName: (brandId: number) => string;
   onEdit: (plan: BrandSubscriptionPlan) => void;
   onDelete: (plan: BrandSubscriptionPlan) => void;
+  readOnly?: boolean;
 }
 
 export default function SubscriptionTable({
@@ -31,7 +32,8 @@ export default function SubscriptionTable({
   getBrandLogo,
   getBrandName,
   onEdit,
-  onDelete
+  onDelete,
+  readOnly = false
 }: SubscriptionTableProps) {
   if (isLoading) {
     return (
@@ -72,7 +74,7 @@ export default function SubscriptionTable({
             <TableCell sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', bgcolor: '#f8fafc', textTransform: 'uppercase' }}>Key Features Included</TableCell>
             <TableCell sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', bgcolor: '#f8fafc', textTransform: 'uppercase' }}>External ID</TableCell>
             <TableCell sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', bgcolor: '#f8fafc', textTransform: 'uppercase' }}>Status</TableCell>
-            <TableCell sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', bgcolor: '#f8fafc', textTransform: 'uppercase', textAlign: 'right' }}>Actions</TableCell>
+            {!readOnly && <TableCell sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', bgcolor: '#f8fafc', textTransform: 'uppercase', textAlign: 'right' }}>Actions</TableCell>}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -167,36 +169,38 @@ export default function SubscriptionTable({
                   sx={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', borderRadius: '6px' }}
                 />
               </TableCell>
-              <TableCell align="right">
-                <div className="flex justify-end gap-1">
-                  <IconButton
-                    onClick={() => onEdit(plan)}
-                    size="small"
-                    sx={{
-                      color: '#64748b',
-                      '&:hover': {
-                        color: primaryColor,
-                        bgcolor: `${primaryColor}10`
-                      }
-                    }}
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </IconButton>
-                  <IconButton
-                    onClick={() => onDelete(plan)}
-                    size="small"
-                    sx={{
-                      color: '#64748b',
-                      '&:hover': {
-                        color: '#ef4444',
-                        bgcolor: '#fee2e2'
-                      }
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </IconButton>
-                </div>
-              </TableCell>
+              {!readOnly && (
+                <TableCell align="right">
+                  <div className="flex justify-end gap-1">
+                    <IconButton
+                      onClick={() => onEdit(plan)}
+                      size="small"
+                      sx={{
+                        color: '#64748b',
+                        '&:hover': {
+                          color: primaryColor,
+                          bgcolor: `${primaryColor}10`
+                        }
+                      }}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </IconButton>
+                    <IconButton
+                      onClick={() => onDelete(plan)}
+                      size="small"
+                      sx={{
+                        color: '#64748b',
+                        '&:hover': {
+                          color: '#ef4444',
+                          bgcolor: '#fee2e2'
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </IconButton>
+                  </div>
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>

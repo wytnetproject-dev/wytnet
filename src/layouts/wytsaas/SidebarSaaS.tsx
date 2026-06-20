@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Palette, ShieldCheck, ClipboardCheck, User, Star, CreditCard } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Palette, ShieldCheck, ClipboardCheck, User, Star, CreditCard, Image } from 'lucide-react';
 import Box from '@mui/material/Box';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -43,6 +43,7 @@ export default function SidebarSaaS({
       { id: 'admin-brands', label: 'Admin Apps', icon: ShieldCheck },
       { id: 'wytpass-approvals', label: 'WytPass Approvals', icon: ClipboardCheck },
       { id: 'wytpayment-approvals', label: 'WytPayment Approvals', icon: CreditCard },
+      { id: 'marketplace-banners', label: 'Marketplace Banners', icon: Image },
       { id: 'users', label: 'Users', icon: User }
     ] : []),
     ...(userRole === 'user' ? [

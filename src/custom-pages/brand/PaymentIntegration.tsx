@@ -38,11 +38,12 @@ interface PaymentIntegrationProps {
   portalType: 'wytsaas' | 'wytpass';
   brandId?: number;
   isEmbedded?: boolean;
+  onRefreshBrand?: () => void;
 }
 
 const DEFAULT_MOCK_BRANDS: Brand[] = [];
 
-export default function PaymentIntegration({ user: _user, portalType, brandId, isEmbedded }: PaymentIntegrationProps) {
+export default function PaymentIntegration({ user: _user, portalType, brandId, isEmbedded, onRefreshBrand }: PaymentIntegrationProps) {
   // Theme styling depending on portalType
   const primaryColor = portalType === 'wytsaas' ? '#0066cc' : '#9333ea';
   const primaryHoverColor = portalType === 'wytsaas' ? '#0052a3' : '#7e22ce';
@@ -244,6 +245,9 @@ export default function PaymentIntegration({ user: _user, portalType, brandId, i
       setSelectedBrand(updatedList.find(b => b.id === selectedBrand.id) || null);
       setReview(mockReview);
       showToast('Applied for WytPayment Review (Sandbox).', 'success');
+      if (onRefreshBrand) {
+        onRefreshBrand();
+      }
     } else {
       const token = getAuthToken();
       if (!token) {
@@ -271,6 +275,9 @@ export default function PaymentIntegration({ user: _user, portalType, brandId, i
         setSelectedBrand(updatedBrand);
         
         showToast('WytPayment Review request submitted to administrators.', 'success');
+        if (onRefreshBrand) {
+          onRefreshBrand();
+        }
       } catch (err: any) {
         showToast(err.message || 'Failed to submit review.', 'error');
       } finally {
@@ -315,6 +322,9 @@ export default function PaymentIntegration({ user: _user, portalType, brandId, i
     setIsRejecting(false);
     setRejectNotes('');
     showToast(`Payment Review mock-updated to ${status.toUpperCase()}!`, 'success');
+    if (onRefreshBrand) {
+      onRefreshBrand();
+    }
   };
 
   // Determine button state and check interactivity
@@ -507,14 +517,26 @@ export default function PaymentIntegration({ user: _user, portalType, brandId, i
                       </ListItemAvatar>
                       <ListItemText
                         primary={
-                          <Typography sx={{ fontWeight: 'bold', fontSize: '12px', color: '#1e293b' }}>
-                            {b.name}
-                          </Typography>
+                          <div className="flex items-center justify-between">
+                            <Typography sx={{ fontWeight: 'bold', fontSize: '12px', color: '#1e293b' }}>
+                              {b.name}
+                            </Typography>
+                            {b.wytpayment_review?.integration_status === 'rejected' && (
+                              <span className="text-[8px] font-extrabold text-rose-600 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded uppercase leading-none shrink-0 ml-1">Rejected</span>
+                            )}
+                          </div>
                         }
                         secondary={
-                          <Typography sx={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace' }}>
-                            /{b.slug}
-                          </Typography>
+                          <div className="space-y-0.5 mt-0.5">
+                            <Typography sx={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace' }}>
+                              /{b.slug}
+                            </Typography>
+                            {b.wytpayment_review?.integration_status === 'rejected' && b.wytpayment_review?.review_notes && (
+                              <Typography sx={{ fontSize: '9.5px', color: '#e11d48', fontWeight: 600, whiteSpace: 'normal', lineHeight: 1.15 }}>
+                                Reason: {b.wytpayment_review.review_notes}
+                              </Typography>
+                            )}
+                          </div>
                         }
                       />
                     </ListItemButton>

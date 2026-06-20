@@ -26,13 +26,17 @@ import {
   Sliders,
   BookOpen,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Check
 } from 'lucide-react';
+import { fetchBrandById, updateBrand } from '@/api/wytsaas/brand';
 
 interface BrandIntegrationSettingsProps {
   brandId: number;
   isSandbox: boolean;
   portalType: 'wytsaas' | 'wytpass';
+  onRefreshBrand?: () => void;
+  readOnly?: boolean;
 }
 
 interface IntegrationData {
@@ -45,7 +49,7 @@ interface IntegrationData {
   status: string;
 }
 
-export default function BrandIntegrationSettings({ brandId, isSandbox, portalType }: BrandIntegrationSettingsProps) {
+export default function BrandIntegrationSettings({ brandId, isSandbox, portalType, onRefreshBrand, readOnly = false }: BrandIntegrationSettingsProps) {
   const primaryColor = portalType === 'wytsaas' ? '#0066cc' : '#9333ea';
   const primaryHoverColor = portalType === 'wytsaas' ? '#0052a3' : '#7e22ce';
 
@@ -66,6 +70,7 @@ export default function BrandIntegrationSettings({ brandId, isSandbox, portalTyp
   const [showWebhookSecret, setShowWebhookSecret] = useState(false);
   const [showRefDocs, setShowRefDocs] = useState(false);
   const [activeRefTab, setActiveRefTab] = useState<'create' | 'update' | 'cancel'>('create');
+  const [brandStage, setBrandStage] = useState<string | null>(null);
 
   // Snackbar Alert state
   const [toastOpen, setToastOpen] = useState(false);
@@ -103,6 +108,13 @@ export default function BrandIntegrationSettings({ brandId, isSandbox, portalTyp
               status: 'active'
             });
           }
+          // Fetch brand stage
+          const storedBrands = localStorage.getItem('mock_brands');
+          const mockList = storedBrands ? JSON.parse(storedBrands) : [];
+          const b = mockList.find((item: any) => item.id === brandId);
+          if (b) {
+            setBrandStage(b.current_stage);
+          }
         } catch (e) {
           console.error(e);
         } finally {
@@ -134,6 +146,10 @@ export default function BrandIntegrationSettings({ brandId, isSandbox, portalTyp
             });
           }
         }
+
+        // Fetch brand stage
+        const brandObj = await fetchBrandById(brandId);
+        setBrandStage(brandObj.current_stage);
       } catch (err) {
         console.warn("Failed to load settings from backend, using default placeholders.", err);
       } finally {
@@ -143,6 +159,74 @@ export default function BrandIntegrationSettings({ brandId, isSandbox, portalTyp
 
     fetchSettings();
   }, [brandId, isSandbox]);
+
+  const handleProceedToNextStage = async () => {
+    setIsSaving(true);
+    
+    // First, save settings
+    if (isSandbox) {
+      localStorage.setItem(`mock_brand_integration_${brandId}`, JSON.stringify(formData));
+    } else {
+      const token = getAuthToken();
+      if (token) {
+        try {
+          await fetch(`http://localhost:8000/brands/${brandId}/integration`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(formData)
+          });
+        } catch (err) {
+          console.error("Failed to save settings to backend before proceeding:", err);
+        }
+      }
+    }
+
+    // Now, advance stage to whitepass_review
+    if (isSandbox) {
+      const stored = localStorage.getItem('mock_brands');
+      const mockList = stored ? JSON.parse(stored) : [];
+      const updatedList = mockList.map((b: any) =>
+        b.id === brandId
+          ? {
+              ...b,
+              current_stage: 'whitepass_review',
+              updated_at: new Date().toISOString()
+            }
+          : b
+      );
+      localStorage.setItem('mock_brands', JSON.stringify(updatedList));
+      showToast('API Configuration saved! Stage 5 unlocked: SSO Integration Review.', 'success');
+      setBrandStage('whitepass_review');
+      setIsSaving(false);
+      if (onRefreshBrand) {
+        onRefreshBrand();
+      }
+    } else {
+      const token = getAuthToken();
+      if (!token) {
+        showToast('Authentication token missing.', 'error');
+        setIsSaving(false);
+        return;
+      }
+      try {
+        await updateBrand(brandId, {
+          current_stage: 'whitepass_review'
+        }, token);
+        showToast('API Configuration saved! Stage 5 unlocked: SSO Integration Review.', 'success');
+        setBrandStage('whitepass_review');
+        if (onRefreshBrand) {
+          onRefreshBrand();
+        }
+      } catch (err: any) {
+        showToast(err.message || 'Failed to update onboarding stage.', 'error');
+      } finally {
+        setIsSaving(false);
+      }
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,6 +313,7 @@ export default function BrandIntegrationSettings({ brandId, isSandbox, portalTyp
             <TextField
               label="Create User Sync Endpoint (POST)"
               size="small"
+              disabled={readOnly}
               value={formData.create_user_endpoint}
               onChange={(e) => setFormData({ ...formData, create_user_endpoint: e.target.value })}
               placeholder="e.g. https://api.yourapp.com/user/create"
@@ -242,6 +327,7 @@ export default function BrandIntegrationSettings({ brandId, isSandbox, portalTyp
             <TextField
               label="Update User Sync Endpoint (POST)"
               size="small"
+              disabled={readOnly}
               value={formData.update_user_endpoint}
               onChange={(e) => setFormData({ ...formData, update_user_endpoint: e.target.value })}
               placeholder="e.g. https://api.yourapp.com/user/update"
@@ -255,6 +341,7 @@ export default function BrandIntegrationSettings({ brandId, isSandbox, portalTyp
             <TextField
               label="Cancel User Sync Endpoint (POST)"
               size="small"
+              disabled={readOnly}
               value={formData.cancel_user_endpoint}
               onChange={(e) => setFormData({ ...formData, cancel_user_endpoint: e.target.value })}
               placeholder="e.g. https://api.yourapp.com/user/cancel"
@@ -268,6 +355,7 @@ export default function BrandIntegrationSettings({ brandId, isSandbox, portalTyp
             <TextField
               label="Webhook Callback URL"
               size="small"
+              disabled={readOnly}
               value={formData.webhook_url}
               onChange={(e) => setFormData({ ...formData, webhook_url: e.target.value })}
               placeholder="e.g. https://api.wytnet.com/webhooks/your-app"
@@ -291,6 +379,7 @@ export default function BrandIntegrationSettings({ brandId, isSandbox, portalTyp
             <TextField
               label="App Sync API Key"
               size="small"
+              disabled={readOnly}
               type={showApiKey ? 'text' : 'password'}
               value={formData.api_key}
               onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
@@ -314,6 +403,7 @@ export default function BrandIntegrationSettings({ brandId, isSandbox, portalTyp
             <TextField
               label="Webhook Verification Secret"
               size="small"
+              disabled={readOnly}
               type={showWebhookSecret ? 'text' : 'password'}
               value={formData.webhook_secret}
               onChange={(e) => setFormData({ ...formData, webhook_secret: e.target.value })}
@@ -349,6 +439,7 @@ export default function BrandIntegrationSettings({ brandId, isSandbox, portalTyp
               <Select
                 value={formData.status}
                 label="Integration Pipeline Status"
+                disabled={readOnly}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                 sx={{ fontSize: '12px', fontWeight: '500' }}
               >
@@ -534,29 +625,56 @@ export default function BrandIntegrationSettings({ brandId, isSandbox, portalTyp
         </Paper>
 
         {/* Form Actions */}
-        <div className="flex justify-end gap-3 pt-2">
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={isSaving}
-            sx={{
-              bgcolor: primaryColor,
-              borderRadius: '12px',
-              textTransform: 'none',
-              fontWeight: 'bold',
-              px: 4,
-              py: 1,
-              boxShadow: 'none',
-              '&:hover': {
-                bgcolor: primaryHoverColor,
-                boxShadow: 'none'
-              }
-            }}
-            startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <Save className="h-4 w-4" />}
-          >
-            {isSaving ? 'Saving Changes...' : 'Save Configuration'}
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={isSaving}
+              sx={{
+                bgcolor: primaryColor,
+                borderRadius: '12px',
+                textTransform: 'none',
+                fontWeight: 'bold',
+                px: 4,
+                py: 1,
+                boxShadow: 'none',
+                '&:hover': {
+                  bgcolor: primaryHoverColor,
+                  boxShadow: 'none'
+                }
+              }}
+              startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <Save className="h-4 w-4" />}
+            >
+              {isSaving ? 'Saving Changes...' : 'Save Configuration'}
+            </Button>
+            {brandStage === 'API Integration' && (
+              <Button
+                type="button"
+                onClick={handleProceedToNextStage}
+                variant="contained"
+                disabled={isSaving}
+                sx={{
+                  bgcolor: '#10b981',
+                  color: 'white',
+                  borderRadius: '12px',
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  px: 4,
+                  py: 1,
+                  boxShadow: 'none',
+                  '&:hover': {
+                    bgcolor: '#059669',
+                    boxShadow: 'none'
+                  }
+                }}
+                startIcon={<Check className="h-4 w-4" />}
+              >
+                Validate & Proceed to SSO Review
+              </Button>
+            )}
+          </div>
+        )}
       </form>
     </Box>
   );

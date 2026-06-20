@@ -37,11 +37,13 @@ interface BrandAssetsProps {
   portalType: 'wytsaas' | 'wytpass';
   brandId?: number;
   isEmbedded?: boolean;
+  onRefreshBrand?: () => void;
+  readOnly?: boolean;
 }
 
 const DEFAULT_MOCK_BRANDS: Brand[] = [];
 
-export default function BrandAssets({ user: _user, portalType, brandId, isEmbedded }: BrandAssetsProps) {
+export default function BrandAssets({ user: _user, portalType, brandId, isEmbedded, onRefreshBrand, readOnly = false }: BrandAssetsProps) {
   // Theme styling depending on portalType
   const primaryColor = portalType === 'wytsaas' ? '#0066cc' : '#9333ea';
   const primaryHoverColor = portalType === 'wytsaas' ? '#0052a3' : '#7e22ce';
@@ -354,6 +356,79 @@ export default function BrandAssets({ user: _user, portalType, brandId, isEmbedd
     }
   };
 
+  const handleProceedToNextStage = async () => {
+    if (!selectedBrand) return;
+    
+    // Save assets first if there are changes
+    if (hasChanges) {
+      if (isSandbox) {
+        const nowString = new Date().toISOString();
+        const updatedList = brands.map((b) =>
+          b.id === selectedBrand.id
+            ? {
+                ...b,
+                media: currentMedia.map((m, idx) => ({ ...m, id: idx + 1, brand_id: b.id })),
+                updated_at: nowString
+              }
+            : b
+        );
+        localStorage.setItem('mock_brands', JSON.stringify(updatedList));
+      } else {
+        const token = getAuthToken();
+        if (token) {
+          try {
+            await updateBrand(selectedBrand.id, {
+              media: currentMedia.map(m => ({
+                media_type: m.media_type,
+                media_url: m.media_url,
+                sort_order: m.sort_order
+              }))
+            }, token);
+          } catch (err) {
+            console.error('Failed to pre-save assets:', err);
+          }
+        }
+      }
+    }
+
+    // Now advance stage to 'Subscription Plan Configuration'
+    if (isSandbox) {
+      const stored = localStorage.getItem('mock_brands');
+      const mockList = stored ? JSON.parse(stored) : [];
+      const updatedList = mockList.map((b: Brand) =>
+        b.id === selectedBrand.id
+          ? {
+              ...b,
+              current_stage: 'Subscription Plan Configuration',
+              updated_at: new Date().toISOString()
+            }
+          : b
+      );
+      localStorage.setItem('mock_brands', JSON.stringify(updatedList));
+      showToast('Assets finalized! Stage 3 unlocked: Subscription Plan Configuration.', 'success');
+      if (onRefreshBrand) {
+        onRefreshBrand();
+      }
+    } else {
+      const token = getAuthToken();
+      if (!token) {
+        showToast('Authentication token missing.', 'error');
+        return;
+      }
+      try {
+        await updateBrand(selectedBrand.id, {
+          current_stage: 'Subscription Plan Configuration'
+        }, token);
+        showToast('Assets finalized! Stage 3 unlocked: Subscription Plan Configuration.', 'success');
+        if (onRefreshBrand) {
+          onRefreshBrand();
+        }
+      } catch (err: any) {
+        showToast(err.message || 'Failed to update onboarding stage.', 'error');
+      }
+    }
+  };
+
   return (
     <Box className={`flex flex-col select-none ${isEmbedded ? 'bg-transparent px-0 py-0 space-y-4' : 'bg-[#f8fafc] px-8 py-6 space-y-6 flex-grow overflow-hidden h-full'}`}>
       {/* Toast notifications */}
@@ -490,7 +565,7 @@ export default function BrandAssets({ user: _user, portalType, brandId, isEmbedd
                   </Typography>
                 </Box>
 
-                {hasChanges && (
+                {hasChanges && !readOnly && (
                   <Chip
                     icon={<AlertTriangle className="h-3 w-3" />}
                     label="Unsaved Changes"
@@ -503,99 +578,103 @@ export default function BrandAssets({ user: _user, portalType, brandId, isEmbedd
 
               {/* Form & List Workspace Scroll Area */}
               <Box sx={{ flexGrow: isEmbedded ? 0 : 1, overflowY: isEmbedded ? 'visible' : 'auto', p: 3, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {/* 1. Add Asset input section */}
-                <Box>
-                  <Typography sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', mb: 2, textTransform: 'uppercase' }}>
-                    Add Showcase Asset
-                  </Typography>
-                  
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <TextField
-                        label="Sort Order"
-                        placeholder="e.g. 1"
-                        size="small"
-                        type="number"
-                        value={newSortOrder}
-                        onChange={(e) => setNewSortOrder(e.target.value)}
-                        sx={{ width: 100 }}
-                        slotProps={{
-                          inputLabel: { style: { fontSize: '12px', fontWeight: '600' } },
-                          input: { style: { borderRadius: '10px', fontSize: '12px' } }
-                        }}
-                      />
-                      <Typography sx={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>
-                        (Optional) Specify order before uploading. Automatically appends if left blank.
+                {!readOnly && (
+                  <>
+                    {/* 1. Add Asset input section */}
+                    <Box>
+                      <Typography sx={{ fontWeight: 'bold', fontSize: '11px', color: '#64748b', mb: 2, textTransform: 'uppercase' }}>
+                        Add Showcase Asset
                       </Typography>
-                    </Box>
+                      
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <TextField
+                            label="Sort Order"
+                            placeholder="e.g. 1"
+                            size="small"
+                            type="number"
+                            value={newSortOrder}
+                            onChange={(e) => setNewSortOrder(e.target.value)}
+                            sx={{ width: 100 }}
+                            slotProps={{
+                              inputLabel: { style: { fontSize: '12px', fontWeight: '600' } },
+                              input: { style: { borderRadius: '10px', fontSize: '12px' } }
+                            }}
+                          />
+                          <Typography sx={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>
+                            (Optional) Specify order before uploading. Automatically appends if left blank.
+                          </Typography>
+                        </Box>
 
-                    <Box sx={{ maxWidth: '100%' }}>
-                      {currentMedia.filter(m => m.media_type === 'image').length >= 7 ? (
-                        <Alert severity="info" sx={{ borderRadius: '12px' }}>
-                          Maximum limit of 7 screenshots reached. Delete an existing screenshot to upload a new one.
-                        </Alert>
-                      ) : (
-                        <ImageUploader
-                          label="Upload Screenshot Image File"
-                          value={newUrl}
-                          onChange={handleUploadSuccess}
-                          primaryColor={primaryColor}
-                          autoResetAfterUpload={true}
-                          isSandbox={isSandbox}
-                          minWidth={320}
-                          minHeight={320}
-                          maxWidth={3840}
-                          maxHeight={3840}
-                          minAspectRatio={9 / 16}
-                          maxAspectRatio={16 / 9}
-                        />
-                      )}
-                    </Box>
+                        <Box sx={{ maxWidth: '100%' }}>
+                          {currentMedia.filter(m => m.media_type === 'image').length >= 7 ? (
+                            <Alert severity="info" sx={{ borderRadius: '12px' }}>
+                              Maximum limit of 7 screenshots reached. Delete an existing screenshot to upload a new one.
+                            </Alert>
+                          ) : (
+                            <ImageUploader
+                              label="Upload Screenshot Image File"
+                              value={newUrl}
+                              onChange={handleUploadSuccess}
+                              primaryColor={primaryColor}
+                              autoResetAfterUpload={true}
+                              isSandbox={isSandbox}
+                              minWidth={320}
+                              minHeight={320}
+                              maxWidth={3840}
+                              maxHeight={3840}
+                              minAspectRatio={9 / 16}
+                              maxAspectRatio={16 / 9}
+                            />
+                          )}
+                        </Box>
 
-                    <Divider sx={{ my: 1.5, borderStyle: 'dashed' }} />
+                        <Divider sx={{ my: 1.5, borderStyle: 'dashed' }} />
 
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                      <Typography sx={{ fontWeight: 'bold', fontSize: '12px', color: '#475569' }}>
-                        Or Add YouTube Promotional Video
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <TextField
-                          label="YouTube Video URL"
-                          placeholder="e.g. https://www.youtube.com/watch?v=..."
-                          size="small"
-                          value={promoVideoUrl}
-                          onChange={(e) => setPromoVideoUrl(e.target.value)}
-                          sx={{ flexGrow: 1, minWidth: '280px', maxWidth: '500px' }}
-                          slotProps={{
-                            inputLabel: { style: { fontSize: '12px', fontWeight: '600' } },
-                            input: { style: { borderRadius: '10px', fontSize: '12px' } }
-                          }}
-                        />
-                        <Button
-                          variant="outlined"
-                          size="medium"
-                          onClick={handleAddPromoVideo}
-                          sx={{
-                            borderColor: primaryColor,
-                            color: primaryColor,
-                            borderRadius: '10px',
-                            textTransform: 'none',
-                            fontWeight: 'bold',
-                            px: 3,
-                            '&:hover': {
-                              borderColor: primaryHoverColor,
-                              bgcolor: selectionBgColor,
-                            }
-                          }}
-                        >
-                          Add Video Asset
-                        </Button>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                          <Typography sx={{ fontWeight: 'bold', fontSize: '12px', color: '#475569' }}>
+                            Or Add YouTube Promotional Video
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <TextField
+                              label="YouTube Video URL"
+                              placeholder="e.g. https://www.youtube.com/watch?v=..."
+                              size="small"
+                              value={promoVideoUrl}
+                              onChange={(e) => setPromoVideoUrl(e.target.value)}
+                              sx={{ flexGrow: 1, minWidth: '280px', maxWidth: '500px' }}
+                              slotProps={{
+                                inputLabel: { style: { fontSize: '12px', fontWeight: '600' } },
+                                input: { style: { borderRadius: '10px', fontSize: '12px' } }
+                              }}
+                            />
+                            <Button
+                              variant="outlined"
+                              size="medium"
+                              onClick={handleAddPromoVideo}
+                              sx={{
+                                borderColor: primaryColor,
+                                color: primaryColor,
+                                borderRadius: '10px',
+                                textTransform: 'none',
+                                fontWeight: 'bold',
+                                px: 3,
+                                '&:hover': {
+                                  borderColor: primaryHoverColor,
+                                  bgcolor: selectionBgColor,
+                                }
+                              }}
+                            >
+                              Add Video Asset
+                            </Button>
+                          </Box>
+                        </Box>
                       </Box>
                     </Box>
-                  </Box>
-                </Box>
 
-                <Divider />
+                    <Divider />
+                  </>
+                )}
 
                 {/* 2. Gallery Screenshots Section */}
                 <Box>
@@ -696,41 +775,43 @@ export default function BrandAssets({ user: _user, portalType, brandId, isEmbedd
                             </Box>
 
                             {/* Card Footer Actions */}
-                            <CardActions sx={{ justifyContent: 'space-between', px: 1, py: 0.5, bgcolor: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
-                              <Box sx={{ display: 'flex', gap: 0.15 }}>
-                                <IconButton
-                                  size="small"
-                                  disabled={idx === 0}
-                                  onClick={() => handleMoveImageUp(idx)}
-                                  sx={{ p: 0.25, color: '#64748b' }}
-                                >
-                                  <ChevronLeft className="h-4 w-4" />
-                                </IconButton>
-                                <IconButton
-                                  size="small"
-                                  disabled={idx === arr.length - 1}
-                                  onClick={() => handleMoveImageDown(idx)}
-                                  sx={{ p: 0.25, color: '#64748b' }}
-                                >
-                                  <ChevronRight className="h-4 w-4" />
-                                </IconButton>
-                              </Box>
+                            {!readOnly && (
+                              <CardActions sx={{ justifyContent: 'space-between', px: 1, py: 0.5, bgcolor: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
+                                <Box sx={{ display: 'flex', gap: 0.15 }}>
+                                  <IconButton
+                                    size="small"
+                                    disabled={idx === 0}
+                                    onClick={() => handleMoveImageUp(idx)}
+                                    sx={{ p: 0.25, color: '#64748b' }}
+                                  >
+                                    <ChevronLeft className="h-4 w-4" />
+                                  </IconButton>
+                                  <IconButton
+                                    size="small"
+                                    disabled={idx === arr.length - 1}
+                                    onClick={() => handleMoveImageDown(idx)}
+                                    sx={{ p: 0.25, color: '#64748b' }}
+                                  >
+                                    <ChevronRight className="h-4 w-4" />
+                                  </IconButton>
+                                </Box>
 
-                              <IconButton
-                                size="small"
-                                onClick={() => handleRemoveAsset(item)}
-                                sx={{
-                                  p: 0.25,
-                                  color: '#64748b',
-                                  '&:hover': {
-                                    color: '#ef4444',
-                                    bgcolor: '#fee2e2'
-                                  }
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </IconButton>
-                            </CardActions>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleRemoveAsset(item)}
+                                  sx={{
+                                    p: 0.25,
+                                    color: '#64748b',
+                                    '&:hover': {
+                                      color: '#ef4444',
+                                      bgcolor: '#fee2e2'
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </IconButton>
+                              </CardActions>
+                            )}
                           </Card>
                         );
                       })}
@@ -852,85 +933,111 @@ export default function BrandAssets({ user: _user, portalType, brandId, isEmbedd
                             </Box>
 
                             {/* Card Footer Actions */}
-                            <CardActions sx={{ justifyContent: 'space-between', px: 1, py: 0.5, bgcolor: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
-                              <Box sx={{ display: 'flex', gap: 0.15 }}>
-                                <IconButton
-                                  size="small"
-                                  disabled={idx === 0}
-                                  onClick={() => handleMoveVideoUp(idx)}
-                                  sx={{ p: 0.25, color: '#64748b' }}
-                                >
-                                  <ChevronLeft className="h-4 w-4" />
-                                </IconButton>
-                                <IconButton
-                                  size="small"
-                                  disabled={idx === arr.length - 1}
-                                  onClick={() => handleMoveVideoDown(idx)}
-                                  sx={{ p: 0.25, color: '#64748b' }}
-                                >
-                                  <ChevronRight className="h-4 w-4" />
-                                </IconButton>
-                              </Box>
+                            {!readOnly && (
+                              <CardActions sx={{ justifyContent: 'space-between', px: 1, py: 0.5, bgcolor: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
+                                <Box sx={{ display: 'flex', gap: 0.15 }}>
+                                  <IconButton
+                                    size="small"
+                                    disabled={idx === 0}
+                                    onClick={() => handleMoveVideoUp(idx)}
+                                    sx={{ p: 0.25, color: '#64748b' }}
+                                  >
+                                    <ChevronLeft className="h-4 w-4" />
+                                  </IconButton>
+                                  <IconButton
+                                    size="small"
+                                    disabled={idx === arr.length - 1}
+                                    onClick={() => handleMoveVideoDown(idx)}
+                                    sx={{ p: 0.25, color: '#64748b' }}
+                                  >
+                                    <ChevronRight className="h-4 w-4" />
+                                  </IconButton>
+                                </Box>
 
-                              <IconButton
-                                size="small"
-                                onClick={() => handleRemoveAsset(item)}
-                                sx={{
-                                  p: 0.25,
-                                  color: '#64748b',
-                                  '&:hover': {
-                                    color: '#ef4444',
-                                    bgcolor: '#fee2e2'
-                                  }
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </IconButton>
-                            </CardActions>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleRemoveAsset(item)}
+                                  sx={{
+                                    p: 0.25,
+                                    color: '#64748b',
+                                    '&:hover': {
+                                      color: '#ef4444',
+                                      bgcolor: '#fee2e2'
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </IconButton>
+                              </CardActions>
+                            )}
                           </Card>
                         );
                       })}
                     </Box>
                   )}
-                </Box>
               </Box>
+            </Box>
 
               {/* Bottom Footer Actions Panel */}
-              <Box sx={{ p: 3, borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', gap: 2, bgcolor: '#f8fafc' }}>
-                <Button
-                  onClick={handleReset}
-                  disabled={!hasChanges}
-                  sx={{
-                    color: '#64748b',
-                    textTransform: 'none',
-                    fontWeight: 'bold',
-                    borderRadius: '10px',
-                    px: 2.5
-                  }}
-                >
-                  Reset Changes
-                </Button>
-                <Button
-                  onClick={handleSaveAssets}
-                  disabled={!hasChanges}
-                  variant="contained"
-                  sx={{
-                    bgcolor: primaryColor,
-                    textTransform: 'none',
-                    fontWeight: 'bold',
-                    borderRadius: '10px',
-                    px: 3.5,
-                    boxShadow: 'none',
-                    '&:hover': {
-                      bgcolor: primaryHoverColor,
-                      boxShadow: 'none'
-                    }
-                  }}
-                  startIcon={<Save className="h-4 w-4" />}
-                >
-                  Save All Assets
-                </Button>
-              </Box>
+              {!readOnly && (
+                <Box sx={{ p: 3, borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', gap: 2, bgcolor: '#f8fafc' }}>
+                  <Button
+                    onClick={handleReset}
+                    disabled={!hasChanges}
+                    sx={{
+                      color: '#64748b',
+                      textTransform: 'none',
+                      fontWeight: 'bold',
+                      borderRadius: '10px',
+                      px: 2.5
+                    }}
+                  >
+                    Reset Changes
+                  </Button>
+                  <Button
+                    onClick={handleSaveAssets}
+                    disabled={!hasChanges}
+                    variant="contained"
+                    sx={{
+                      bgcolor: primaryColor,
+                      textTransform: 'none',
+                      fontWeight: 'bold',
+                      borderRadius: '10px',
+                      px: 3.5,
+                      boxShadow: 'none',
+                      '&:hover': {
+                        bgcolor: primaryHoverColor,
+                        boxShadow: 'none'
+                      }
+                    }}
+                    startIcon={<Save className="h-4 w-4" />}
+                  >
+                    Save All Assets
+                  </Button>
+                  {isEmbedded && selectedBrand && selectedBrand.current_stage === 'App Asset Submission' && (
+                    <Button
+                      onClick={handleProceedToNextStage}
+                      variant="contained"
+                      sx={{
+                        bgcolor: '#10b981',
+                        color: 'white',
+                        textTransform: 'none',
+                        fontWeight: 'bold',
+                        borderRadius: '10px',
+                        px: 3.5,
+                        boxShadow: 'none',
+                        '&:hover': {
+                          bgcolor: '#059669',
+                          boxShadow: 'none'
+                        }
+                      }}
+                      startIcon={<Check className="h-4 w-4" />}
+                    >
+                      Complete Assets & Proceed
+                    </Button>
+                  )}
+                </Box>
+              )}
             </Paper>
           ) : (
             <Paper

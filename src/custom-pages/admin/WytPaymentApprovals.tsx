@@ -32,7 +32,10 @@ import {
   Clock,
   MessageSquare,
   CreditCard,
-  ExternalLink
+  ExternalLink,
+  Images,
+  Settings,
+  Info
 } from 'lucide-react';
 import type {
   Brand,
@@ -42,6 +45,9 @@ import {
   fetchBrands,
   actionWytPaymentReview
 } from '@/api/wytsaas/brand';
+import BrandAssets from '../brand/BrandAssets';
+import BrandSubscriptions from '../subscription/BrandSubscriptions';
+import BrandIntegrationSettings from '../brand/BrandIntegrationSettings';
 
 interface WytPaymentApprovalsProps {
   user?: { email: string; name: string; role: string } | null;
@@ -65,6 +71,7 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [reviewNotes, setReviewNotes] = useState('');
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+  const [dialogTab, setDialogTab] = useState<number>(0);
 
   // Toast
   const [toastOpen, setToastOpen] = useState(false);
@@ -138,6 +145,7 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
   const handleOpenReview = (brand: Brand) => {
     setSelectedBrand(brand);
     setReviewNotes(brand.wytpayment_review?.review_notes || '');
+    setDialogTab(0);
     setIsReviewOpen(true);
   };
 
@@ -405,12 +413,12 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
                   const reviewStatus = review?.integration_status || 'pending';
 
                   return (
-                    <TableRow 
-                      key={brand.id} 
-                      hover 
-                      sx={{ 
+                    <TableRow
+                      key={brand.id}
+                      hover
+                      sx={{
                         borderBottom: '1px solid var(--mui-palette-divider)',
-                        '&:last-child td, &:last-child th': { border: 0 } 
+                        '&:last-child td, &:last-child th': { border: 0 }
                       }}
                     >
                       <TableCell sx={{ py: 2 }}>
@@ -496,19 +504,26 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
                           />
                         )}
                         {reviewStatus === 'rejected' && (
-                          <Chip
-                            icon={<XCircle className="h-3 w-3" style={{ color: '#b91c1c' }} />}
-                            label="REJECTED"
-                            size="small"
-                            sx={{
-                              bgcolor: '#fef2f2',
-                              color: '#b91c1c',
-                              fontWeight: 600,
-                              fontSize: '0.75rem',
-                              border: '1px solid #fee2e2',
-                              borderRadius: '6px'
-                            }}
-                          />
+                          <div className="flex flex-col gap-1 items-start">
+                            <Chip
+                              icon={<XCircle className="h-3 w-3" style={{ color: '#b91c1c' }} />}
+                              label="REJECTED"
+                              size="small"
+                              sx={{
+                                bgcolor: '#fef2f2',
+                                color: '#b91c1c',
+                                fontWeight: 600,
+                                fontSize: '0.75rem',
+                                border: '1px solid #fee2e2',
+                                borderRadius: '6px'
+                              }}
+                            />
+                            {review?.review_notes && (
+                              <Typography sx={{ fontSize: '10px', color: '#b91c1c', fontWeight: 600, mt: 0.5, maxWidth: '160px', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.2 }}>
+                                Reason: {review.review_notes}
+                              </Typography>
+                            )}
+                          </div>
                         )}
                         {reviewStatus === 'pending' && (
                           <Chip
@@ -563,13 +578,14 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
       <Dialog
         open={isReviewOpen}
         onClose={() => !isSubmittingAction && setIsReviewOpen(false)}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
         slotProps={{
           paper: {
             sx: {
               borderRadius: '24px',
-              p: 1.5
+              p: 1.5,
+              maxHeight: '90vh'
             }
           }
         }}
@@ -598,124 +614,271 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
               </div>
             </DialogTitle>
 
-            <DialogContent sx={{ spaceY: 4, pt: 2 }}>
-              <Box className="space-y-4">
-                {/* Integration Checklist Cards */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className={`p-3.5 rounded-xl border text-center ${selectedBrand.wytpayment_review?.api_keys_configured ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
-                    <div className="flex justify-center mb-1">
-                      {selectedBrand.wytpayment_review?.api_keys_configured ? (
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                      ) : (
-                        <XCircle className="h-5 w-5 text-slate-300" />
-                      )}
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
+              <Tabs
+                value={dialogTab}
+                onChange={(_, val) => setDialogTab(val)}
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{
+                  minHeight: 'auto',
+                  '& .MuiTabs-indicator': {
+                    bgcolor: primaryColor,
+                    height: '3px',
+                    borderRadius: '3px'
+                  },
+                  '& .MuiTab-root': {
+                    textTransform: 'none',
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    minWidth: 'auto',
+                    px: 2,
+                    py: 1.5,
+                    color: '#64748b',
+                    minHeight: 'auto',
+                    '&.Mui-selected': {
+                      color: primaryColor,
+                    }
+                  }
+                }}
+              >
+                <Tab label="Review Decision" icon={<ClipboardCheck className="h-4 w-4" />} iconPosition="start" />
+                <Tab label="App Profile" icon={<Info className="h-4 w-4" />} iconPosition="start" />
+                <Tab label="App Assets" icon={<Images className="h-4 w-4" />} iconPosition="start" />
+                <Tab label="Subscription Plans" icon={<CreditCard className="h-4 w-4" />} iconPosition="start" />
+                <Tab label="API Integration" icon={<Settings className="h-4 w-4" />} iconPosition="start" />
+              </Tabs>
+            </Box>
+
+            <DialogContent sx={{ pt: 2, minHeight: 350, overflowY: 'auto' }}>
+              {dialogTab === 0 && (
+                <Box className="space-y-4">
+                  {/* Integration Checklist Cards */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className={`p-3.5 rounded-xl border text-center ${selectedBrand.wytpayment_review?.api_keys_configured ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
+                      <div className="flex justify-center mb-1">
+                        {selectedBrand.wytpayment_review?.api_keys_configured ? (
+                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-slate-300" />
+                        )}
+                      </div>
+                      <div className="text-[10px] font-extrabold text-slate-500 uppercase">API Credentials</div>
+                      <div className={`text-xs font-bold mt-0.5 ${selectedBrand.wytpayment_review?.api_keys_configured ? 'text-emerald-700' : 'text-slate-500'}`}>
+                        {selectedBrand.wytpayment_review?.api_keys_configured ? 'Configured' : 'Missing'}
+                      </div>
                     </div>
-                    <div className="text-[10px] font-extrabold text-slate-500 uppercase">API Credentials</div>
-                    <div className={`text-xs font-bold mt-0.5 ${selectedBrand.wytpayment_review?.api_keys_configured ? 'text-emerald-700' : 'text-slate-500'}`}>
-                      {selectedBrand.wytpayment_review?.api_keys_configured ? 'Configured' : 'Missing'}
+
+                    <div className={`p-3.5 rounded-xl border text-center ${selectedBrand.wytpayment_review?.webhook_verified ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
+                      <div className="flex justify-center mb-1">
+                        {selectedBrand.wytpayment_review?.webhook_verified ? (
+                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-slate-300" />
+                        )}
+                      </div>
+                      <div className="text-[10px] font-extrabold text-slate-500 uppercase">Webhook Secret</div>
+                      <div className={`text-xs font-bold mt-0.5 ${selectedBrand.wytpayment_review?.webhook_verified ? 'text-emerald-700' : 'text-slate-500'}`}>
+                        {selectedBrand.wytpayment_review?.webhook_verified ? 'Verified' : 'Unverified'}
+                      </div>
+                    </div>
+
+                    <div className={`p-3.5 rounded-xl border text-center ${selectedBrand.wytpayment_review?.test_payment_completed ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
+                      <div className="flex justify-center mb-1">
+                        {selectedBrand.wytpayment_review?.test_payment_completed ? (
+                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-slate-300" />
+                        )}
+                      </div>
+                      <div className="text-[10px] font-extrabold text-slate-500 uppercase">Test Payment</div>
+                      <div className={`text-xs font-bold mt-0.5 ${selectedBrand.wytpayment_review?.test_payment_completed ? 'text-emerald-700' : 'text-slate-500'}`}>
+                        {selectedBrand.wytpayment_review?.test_payment_completed ? 'Completed' : 'Uncompleted'}
+                      </div>
                     </div>
                   </div>
 
-                  <div className={`p-3.5 rounded-xl border text-center ${selectedBrand.wytpayment_review?.webhook_verified ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
-                    <div className="flex justify-center mb-1">
-                      {selectedBrand.wytpayment_review?.webhook_verified ? (
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                      ) : (
-                        <XCircle className="h-5 w-5 text-slate-300" />
-                      )}
+                  {/* Additional Info */}
+                  <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-1.5">
+                    <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+                      <span>Integration Stage</span>
+                      <span className="text-wytnet-blue capitalize">{selectedBrand.current_stage.replace('_', ' ')}</span>
                     </div>
-                    <div className="text-[10px] font-extrabold text-slate-500 uppercase">Webhook Secret</div>
-                    <div className={`text-xs font-bold mt-0.5 ${selectedBrand.wytpayment_review?.webhook_verified ? 'text-emerald-700' : 'text-slate-500'}`}>
-                      {selectedBrand.wytpayment_review?.webhook_verified ? 'Verified' : 'Unverified'}
+                    <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+                      <span>Verification Request Status</span>
+                      <span className="capitalize">{selectedBrand.wytpayment_review?.integration_status || 'pending'}</span>
                     </div>
                   </div>
 
-                  <div className={`p-3.5 rounded-xl border text-center ${selectedBrand.wytpayment_review?.test_payment_completed ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
-                    <div className="flex justify-center mb-1">
-                      {selectedBrand.wytpayment_review?.test_payment_completed ? (
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                      ) : (
-                        <XCircle className="h-5 w-5 text-slate-300" />
-                      )}
-                    </div>
-                    <div className="text-[10px] font-extrabold text-slate-500 uppercase">Test Payment</div>
-                    <div className={`text-xs font-bold mt-0.5 ${selectedBrand.wytpayment_review?.test_payment_completed ? 'text-emerald-700' : 'text-slate-500'}`}>
-                      {selectedBrand.wytpayment_review?.test_payment_completed ? 'Completed' : 'Uncompleted'}
-                    </div>
-                  </div>
-                </div>
+                  {/* App Links to verify */}
+                  {selectedBrand.links && selectedBrand.links.length > 0 && (
+                    <Box className="space-y-1.5 pt-1">
+                      <div className="text-xs font-bold text-slate-600">App Links to Verify:</div>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedBrand.links.map((link, idx) => (
+                          <a
+                            key={idx}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-lg text-xs font-semibold transition-all border border-slate-200/50"
+                          >
+                            <span className="capitalize font-bold text-[9px] text-slate-400 mr-0.5">{link.link_type.replace('_', ' ')}:</span>
+                            <span className="max-w-[150px] truncate">{link.title}</span>
+                            <ExternalLink className="h-3 w-3 text-slate-400 shrink-0" />
+                          </a>
+                        ))}
+                      </div>
+                    </Box>
+                  )}
 
-                {/* Additional Info */}
-                <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-1.5">
-                  <div className="flex justify-between items-center text-xs font-bold text-slate-700">
-                    <span>Integration Stage</span>
-                    <span className="text-wytnet-blue capitalize">{selectedBrand.current_stage.replace('_', ' ')}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs font-bold text-slate-700">
-                    <span>Verification Request Status</span>
-                    <span className="capitalize">{selectedBrand.wytpayment_review?.integration_status || 'pending'}</span>
-                  </div>
-                </div>
-
-                {/* App Links to verify */}
-                {selectedBrand.links && selectedBrand.links.length > 0 && (
+                  {/* Notes Input Field */}
                   <Box className="space-y-1.5 pt-1">
-                    <div className="text-xs font-bold text-slate-600">App Links to Verify:</div>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedBrand.links.map((link, idx) => (
-                        <a
-                          key={idx}
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-lg text-xs font-semibold transition-all border border-slate-200/50"
-                        >
-                          <span className="capitalize font-bold text-[9px] text-slate-400 mr-0.5">{link.link_type.replace('_', ' ')}:</span>
-                          <span className="max-w-[150px] truncate">{link.title}</span>
-                          <ExternalLink className="h-3 w-3 text-slate-400 shrink-0" />
-                        </a>
-                      ))}
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                      <MessageSquare className="h-4 w-4 text-slate-400" />
+                      <span>Review Decision Notes / Rejection Reason</span>
                     </div>
+                    <TextField
+                      multiline
+                      rows={3}
+                      fullWidth
+                      disabled={selectedBrand.wytpayment_review?.integration_status !== 'pending'}
+                      placeholder="Enter review findings, keys verification notes, or detailed instructions if rejecting the payment integration request..."
+                      value={reviewNotes}
+                      onChange={(e) => setReviewNotes(e.target.value)}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          borderRadius: '12px',
+                          color: '#334155',
+                          '& fieldset': { borderColor: '#e2e8f0' },
+                          '&:hover fieldset': { borderColor: '#cbd5e1' },
+                          '&.Mui-focused fieldset': { borderColor: primaryColor }
+                        }
+                      }}
+                    />
                   </Box>
-                )}
 
-                {/* Notes Input Field */}
-                <Box className="space-y-1.5 pt-1">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                    <MessageSquare className="h-4 w-4 text-slate-400" />
-                    <span>Review Decision Notes / Rejection Reason</span>
+                  {selectedBrand.wytpayment_review?.integration_status !== 'pending' && (
+                    <Alert
+                      severity={selectedBrand.wytpayment_review?.integration_status === 'approved' ? 'success' : 'error'}
+                      sx={{ borderRadius: '12px', fontSize: '11.5px', fontWeight: 'bold' }}
+                    >
+                      This review request has already been finalized as <strong>{selectedBrand.wytpayment_review?.integration_status.toUpperCase()}</strong>.
+                      {selectedBrand.wytpayment_review?.integration_status === 'rejected' && selectedBrand.wytpayment_review?.review_notes && (
+                        <div className="mt-1 text-xs font-semibold text-red-700">
+                          Rejection Reason: {selectedBrand.wytpayment_review.review_notes}
+                        </div>
+                      )}
+                    </Alert>
+                  )}
+                </Box>
+              )}
+
+              {dialogTab === 1 && (
+                <Box className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">App Name</span>
+                        <span className="text-sm font-extrabold text-slate-700">{selectedBrand.name}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Slug Identifier</span>
+                        <span className="text-xs font-mono text-slate-500">/{selectedBrand.slug}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Company Name</span>
+                        <span className="text-sm font-bold text-slate-700">{selectedBrand.company_name || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Short Summary</span>
+                        <p className="text-xs font-semibold text-slate-600 mt-1">{selectedBrand.short_description || 'No summary provided.'}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Full Description</span>
+                        <p className="text-xs font-semibold text-slate-600 mt-1 whitespace-pre-line leading-relaxed">
+                          {selectedBrand.full_description || 'No description provided.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      {selectedBrand.logo_url && (
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Logo Image</span>
+                          <img src={selectedBrand.logo_url} alt="App logo" className="h-16 w-16 object-contain rounded-2xl border border-slate-100 p-1" />
+                        </div>
+                      )}
+                      {selectedBrand.banner_url && (
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Banner Showcase</span>
+                          <img src={selectedBrand.banner_url} alt="App banner" className="w-full max-h-24 object-cover rounded-2xl border border-slate-100" />
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">App Classifications</span>
+                        <div className="flex gap-1.5 flex-wrap mt-1">
+                          {(() => {
+                            const types = selectedBrand.brand_type
+                              ? (Array.isArray(selectedBrand.brand_type) ? selectedBrand.brand_type : [selectedBrand.brand_type])
+                              : ['saas'];
+                            return types.map((t, idx) => (
+                              <Chip key={idx} label={t} size="small" sx={{ fontSize: '9px', height: '18px', textTransform: 'uppercase', fontWeight: 'bold' }} />
+                            ));
+                          })()}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Search & Tags</span>
+                        <div className="flex gap-1.5 flex-wrap mt-1">
+                          {selectedBrand.tags && selectedBrand.tags.length > 0 ? (
+                            selectedBrand.tags.map((tag) => (
+                              <Chip key={tag.id} label={tag.name} size="small" sx={{ fontSize: '9px', height: '18px', fontWeight: 'bold', bgcolor: '#eff6ff', color: '#1d4ed8' }} />
+                            ))
+                          ) : (
+                            <span className="text-xs text-slate-400">No tags configured</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <TextField
-                    multiline
-                    rows={3}
-                    fullWidth
-                    disabled={selectedBrand.wytpayment_review?.integration_status !== 'pending'}
-                    placeholder="Enter review findings, keys verification notes, or detailed instructions if rejecting the payment integration request..."
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        borderRadius: '12px',
-                        color: '#334155',
-                        '& fieldset': { borderColor: '#e2e8f0' },
-                        '&:hover fieldset': { borderColor: '#cbd5e1' },
-                        '&.Mui-focused fieldset': { borderColor: primaryColor }
-                      }
-                    }}
+                </Box>
+              )}
+
+              {dialogTab === 2 && (
+                <Box sx={{ p: 0.5 }}>
+                  <BrandAssets
+                    portalType={portalType}
+                    brandId={selectedBrand.id}
+                    isEmbedded={true}
+                    readOnly={true}
                   />
                 </Box>
+              )}
 
-                {selectedBrand.wytpayment_review?.integration_status !== 'pending' && (
-                  <Alert
-                    severity={selectedBrand.wytpayment_review?.integration_status === 'approved' ? 'success' : 'error'}
-                    sx={{ borderRadius: '12px', fontSize: '11.5px', fontWeight: 'bold' }}
-                  >
-                    This review request has already been finalized as <strong>{selectedBrand.wytpayment_review?.integration_status.toUpperCase()}</strong>.
-                  </Alert>
-                )}
-              </Box>
+              {dialogTab === 3 && (
+                <Box sx={{ p: 0.5 }}>
+                  <BrandSubscriptions
+                    portalType={portalType}
+                    brandId={selectedBrand.id}
+                    isEmbedded={true}
+                    readOnly={true}
+                  />
+                </Box>
+              )}
+
+              {dialogTab === 4 && (
+                <Box sx={{ p: 0.5 }}>
+                  <BrandIntegrationSettings
+                    brandId={selectedBrand.id}
+                    isSandbox={isSandbox}
+                    portalType={portalType}
+                    readOnly={true}
+                  />
+                </Box>
+              )}
             </DialogContent>
 
             <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
@@ -732,7 +895,7 @@ export default function WytPaymentApprovals({ user: _user, portalType }: WytPaym
                 Close
               </Button>
 
-              {selectedBrand.wytpayment_review?.integration_status === 'pending' && (
+              {dialogTab === 0 && selectedBrand.wytpayment_review?.integration_status === 'pending' && (
                 <>
                   <Button
                     disabled={isSubmittingAction}
