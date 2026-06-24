@@ -31,6 +31,19 @@ export interface BrandWhitePassReview {
   reviewed_at?: string | null;
 }
 
+export interface BrandWhitePassReviewLog {
+  id: number;
+  brand_id: number;
+  integration_status: string;
+  sdk_installed: boolean;
+  callback_verified: boolean;
+  domain_verified: boolean;
+  reviewed_by?: string | null;
+  review_notes?: string | null;
+  reviewed_at?: string | null;
+  created_at: string;
+}
+
 export interface BrandWytPaymentReview {
   id: number;
   brand_id: number;
@@ -41,7 +54,6 @@ export interface BrandWytPaymentReview {
   review_notes?: string | null;
   reviewed_at?: string | null;
 }
-
 export interface BrandReview {
   id?: number;
   brand_id?: number;
@@ -296,4 +308,24 @@ export async function actionFinalReview(
   }
   return resData.item;
 }
+
+/**
+ * Fetch WhitePass SSO review logs for a brand.
+ */
+export async function fetchWhitePassReviewLogs(brandId: number, token: string): Promise<BrandWhitePassReviewLog[]> {
+  if (token === 'mock-jwt-token-wytsaas' || !token) {
+    const stored = localStorage.getItem(`mock_whitepass_review_logs_${brandId}`);
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  try {
+    const data = await api.get<ApiResponse<BrandWhitePassReviewLog>>(`/brands/${brandId}/whitepass-review/logs`, token);
+    return data.items || [];
+  } catch (err: any) {
+    console.warn('Backend connection failed. Using local storage logs.', err);
+    const stored = localStorage.getItem(`mock_whitepass_review_logs_${brandId}`);
+    return stored ? JSON.parse(stored) : [];
+  }
+}
+
 

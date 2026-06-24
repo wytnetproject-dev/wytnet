@@ -240,6 +240,23 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
           : b
       );
 
+      // Save log entry to localStorage
+      const storedLogs = localStorage.getItem(`mock_whitepass_review_logs_${selectedBrand.id}`);
+      const logsList = storedLogs ? JSON.parse(storedLogs) : [];
+      const newLog = {
+        id: logsList.length > 0 ? Math.max(...logsList.map((l: any) => l.id)) + 1 : 1,
+        brand_id: selectedBrand.id,
+        integration_status: 'pending',
+        sdk_installed: sdkInstalled,
+        callback_verified: callbackVerified,
+        domain_verified: domainVerified,
+        review_notes: null,
+        reviewed_at: null,
+        created_at: nowString
+      };
+      logsList.unshift(newLog);
+      localStorage.setItem(`mock_whitepass_review_logs_${selectedBrand.id}`, JSON.stringify(logsList));
+
       localStorage.setItem('mock_brands', JSON.stringify(updatedList));
       setBrands(updatedList);
       setSelectedBrand(updatedList.find(b => b.id === selectedBrand.id) || null);
@@ -314,6 +331,23 @@ export default function SSOIntegration({ user: _user, portalType, brandId, isEmb
           }
         : b
     );
+
+    // Save log entry to localStorage
+    const storedLogs = localStorage.getItem(`mock_whitepass_review_logs_${selectedBrand.id}`);
+    const logsList = storedLogs ? JSON.parse(storedLogs) : [];
+    const newLog = {
+      id: logsList.length > 0 ? Math.max(...logsList.map((l: any) => l.id)) + 1 : 1,
+      brand_id: selectedBrand.id,
+      integration_status: status,
+      sdk_installed: review.sdk_installed,
+      callback_verified: review.callback_verified,
+      domain_verified: review.domain_verified,
+      review_notes: status === 'rejected' ? rejectNotes : null,
+      reviewed_at: nowString,
+      created_at: nowString
+    };
+    logsList.unshift(newLog);
+    localStorage.setItem(`mock_whitepass_review_logs_${selectedBrand.id}`, JSON.stringify(logsList));
 
     localStorage.setItem('mock_brands', JSON.stringify(updatedList));
     setBrands(updatedList);

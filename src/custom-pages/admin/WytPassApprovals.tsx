@@ -183,6 +183,30 @@ export default function WytPassApprovals({ user: _user, portalType }: WytPassApp
           return b;
         });
 
+        // Save log entry to localStorage
+        const brandObj = brands.find(b => b.id === selectedBrand.id);
+        const review = brandObj?.whitepass_review || {
+          sdk_installed: true,
+          callback_verified: true,
+          domain_verified: true
+        };
+        const nowString = new Date().toISOString();
+        const storedLogs = localStorage.getItem(`mock_whitepass_review_logs_${selectedBrand.id}`);
+        const logsList = storedLogs ? JSON.parse(storedLogs) : [];
+        const newLog = {
+          id: logsList.length > 0 ? Math.max(...logsList.map((l: any) => l.id)) + 1 : 1,
+          brand_id: selectedBrand.id,
+          integration_status: status,
+          sdk_installed: review.sdk_installed,
+          callback_verified: review.callback_verified,
+          domain_verified: review.domain_verified,
+          review_notes: reviewNotes,
+          reviewed_at: nowString,
+          created_at: nowString
+        };
+        logsList.unshift(newLog);
+        localStorage.setItem(`mock_whitepass_review_logs_${selectedBrand.id}`, JSON.stringify(logsList));
+
         localStorage.setItem('mock_brands', JSON.stringify(updatedList));
         setBrands(updatedList);
         showToast(`Verification ${status} successfully (Sandbox)`, 'success');

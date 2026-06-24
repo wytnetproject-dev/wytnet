@@ -4,6 +4,7 @@ import Stats from '@/components/landing/Stats';
 import Ecosystem from '@/components/landing/Ecosystem';
 import Orchestration from '@/components/landing/Orchestration';
 import CTA from '@/components/landing/CTA';
+import EnquirySection from '@/components/landing/EnquirySection';
 import Footer from '@/components/landing/Footer';
 
 export default function LandingPage() {
@@ -16,6 +17,7 @@ export default function LandingPage() {
         <Ecosystem />
         <Orchestration />
         <CTA />
+        <EnquirySection />
       </main>
       <Footer />
     </div>

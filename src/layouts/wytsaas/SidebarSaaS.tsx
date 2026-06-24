@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Palette, ShieldCheck, ClipboardCheck, User, Star, CreditCard, Image } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Palette, ShieldCheck, ClipboardCheck, User, Star, CreditCard, Image, MessageSquare, ShoppingBag } from 'lucide-react';
 import Box from '@mui/material/Box';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -41,12 +41,16 @@ export default function SidebarSaaS({
     ] : []),
     ...(userRole === 'wytsaas_admin' ? [
       { id: 'admin-brands', label: 'Admin Apps', icon: ShieldCheck },
+      { id: 'watchlist', label: 'Watchlist', icon: Star },
       { id: 'wytpass-approvals', label: 'WytPass Approvals', icon: ClipboardCheck },
       { id: 'wytpayment-approvals', label: 'WytPayment Approvals', icon: CreditCard },
       { id: 'marketplace-banners', label: 'Marketplace Banners', icon: Image },
-      { id: 'users', label: 'Users', icon: User }
+      { id: 'users', label: 'Users', icon: User },
+      { id: 'admin-enquiries', label: 'Enquiries', icon: MessageSquare }
     ] : []),
     ...(userRole === 'user' ? [
+      { id: 'user-marketplace', label: 'Marketplace', icon: ShoppingBag },
+      { id: 'watchlist', label: 'Watchlist', icon: Star },
       { id: 'user-watchlist', label: 'My Apps', icon: Star }
     ] : []),
   ];
@@ -55,18 +59,19 @@ export default function SidebarSaaS({
     <Box
       component="aside"
       sx={{
-        width: isMinimized ? 80 : 256,
+        width: { xs: 0, md: isMinimized ? 80 : 256 },
         height: '100vh',
         flexShrink: 0,
         transition: 'width 300ms cubic-bezier(0.4, 0, 0.2, 1)',
         position: 'relative',
+        zIndex: { xs: 1200, md: 'auto' }
       }}
       onMouseEnter={() => isMinimized && setIsHovered(true)}
       onMouseLeave={() => isMinimized && setIsHovered(false)}
     >
       <Box
         sx={{
-          width: isExpanded ? 256 : 80,
+          width: { xs: 256, md: isExpanded ? 256 : 80 },
           height: '100vh',
           backgroundColor: '#ffffff',
           borderRight: '1px solid #f1f5f9',
@@ -74,15 +79,17 @@ export default function SidebarSaaS({
           flexDirection: 'column',
           color: '#475569',
           userSelect: 'none',
-          transition: 'width 300ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'width 300ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1), transform 300ms cubic-bezier(0.4, 0, 0.2, 1)',
           overflow: 'hidden',
-          ...(isMinimized && isHovered ? {
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            zIndex: 1100,
-            boxShadow: '0 8px 24px rgba(15, 23, 42, 0.12)',
-          } : {})
+          position: { xs: 'fixed', md: isMinimized && isHovered ? 'absolute' : 'relative' },
+          left: 0,
+          top: 0,
+          zIndex: { xs: 1200, md: 1100 },
+          transform: { xs: isMinimized ? 'translateX(-100%)' : 'translateX(0)', md: 'none' },
+          boxShadow: {
+            xs: isMinimized ? 'none' : '4px 0 16px rgba(15, 23, 42, 0.08)',
+            md: isMinimized && isHovered ? '0 8px 24px rgba(15, 23, 42, 0.12)' : 'none'
+          }
         }}
       >
         {/* Sidebar Header Logo */}

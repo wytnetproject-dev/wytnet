@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, LogIn, LogOut, User } from 'lucide-react';
+import { Search, LogIn, LogOut, User, Menu as HamburgerIcon } from 'lucide-react';
 import Box from '@mui/material/Box';
 import Avatar from '@mui/material/Avatar';
 import Menu from '@mui/material/Menu';
@@ -7,15 +7,17 @@ import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
 
 interface TopbarProps {
   user: { email: string; name: string } | null;
   onLogout: () => void;
   onLoginClick: () => void;
   onMyAccountClick: () => void;
+  onToggleSidebar?: () => void;
 }
 
-export default function TopbarSaaS({ user, onLogout, onLoginClick, onMyAccountClick }: TopbarProps) {
+export default function TopbarSaaS({ user, onLogout, onLoginClick, onMyAccountClick, onToggleSidebar }: TopbarProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -45,8 +47,23 @@ export default function TopbarSaaS({ user, onLogout, onLoginClick, onMyAccountCl
       className="justify-between"
     >
       {/* Left side Search Input */}
-      <Box sx={{ flexGrow: 1, maxWidth: 448 }}>
-        <div className="relative group">
+      <Box sx={{ flexGrow: 1, maxWidth: 448, display: 'flex', alignItems: 'center' }}>
+        {/* Mobile Hamburger Menu Icon */}
+        <IconButton
+          onClick={onToggleSidebar}
+          sx={{
+            display: { xs: 'inline-flex', md: 'none' },
+            mr: 1.5,
+            color: 'slate.500',
+            '&:hover': { backgroundColor: '#f1f5f9' },
+            borderRadius: '8px',
+            p: 1
+          }}
+        >
+          <HamburgerIcon className="h-5 w-5" />
+        </IconButton>
+
+        <div className="relative group w-full">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-wytnet-blue transition-colors">
             <Search className="h-4 w-4" />
           </div>

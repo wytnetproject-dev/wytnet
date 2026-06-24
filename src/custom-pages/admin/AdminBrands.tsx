@@ -38,6 +38,7 @@ import {
 // Reuse existing sub-components from the brand folder
 import BrandTable from '@/custom-pages/brand/BrandTable';
 import BrandForm from '@/custom-pages/brand/BrandForm';
+import { fetchWatchlist, addToWatchlist, removeFromWatchlist } from '@/api/wytsaas/watchlist';
 
 interface AdminBrandsProps {
   user?: { email: string; name: string; role: string } | null;
@@ -56,6 +57,7 @@ export default function AdminBrands({ user, portalType }: AdminBrandsProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSandbox, setIsSandbox] = useState(false);
+  const [watchlistIds, setWatchlistIds] = useState<number[]>([]);
 
   // View State: 'list' | 'create' | 'edit'
   const [viewMode, setViewMode] = useState<'list' | 'create' | 'edit'>('list');
@@ -85,8 +87,37 @@ export default function AdminBrands({ user, portalType }: AdminBrandsProps) {
     setToastOpen(true);
   };
 
+  const loadWatchlistIds = async () => {
+    const token = getAuthToken();
+    try {
+      const watchlist = await fetchWatchlist(token);
+      setWatchlistIds(watchlist.map((item) => item.brand_id));
+    } catch (err) {
+      console.warn('Failed to load watchlist IDs', err);
+    }
+  };
+
+  const handleToggleWatch = async (brandId: number) => {
+    const token = getAuthToken();
+    const isWatched = watchlistIds.includes(brandId);
+    try {
+      if (isWatched) {
+        await removeFromWatchlist(brandId, token);
+        setWatchlistIds(watchlistIds.filter((id) => id !== brandId));
+        showToast('App removed from watchlist', 'success');
+      } else {
+        await addToWatchlist(brandId, token);
+        setWatchlistIds([...watchlistIds, brandId]);
+        showToast('App added to watchlist', 'success');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Watchlist action failed', 'error');
+    }
+  };
+
   const loadBrands = async (forceMock = false) => {
     setIsLoading(true);
+    await loadWatchlistIds();
     if (forceMock) {
       const stored = localStorage.getItem('mock_brands');
       const initial = stored ? JSON.parse(stored) : DEFAULT_MOCK_BRANDS;
@@ -477,6 +508,8 @@ export default function AdminBrands({ user, portalType }: AdminBrandsProps) {
           onEdit={handleOpenEdit}
           onDelete={handleOpenDelete}
           onApproveFinalReview={handleOpenFinalReview}
+          watchlistIds={watchlistIds}
+          onToggleWatch={handleToggleWatch}
         />
       </Paper>
 

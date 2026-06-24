@@ -13,7 +13,9 @@ import MarketplaceBanners from '@/custom-pages/admin/MarketplaceBanners';
 import MyAccountModal from '@/custom-pages/my-account/MyAccountModal';
 import WatchlistCRUD from '@/custom-pages/brand/WatchlistCRUD';
 import UserWatchlistCards from '@/custom-pages/brand/UserWatchlistCards';
+import UserMarketplaceCards from '@/custom-pages/brand/UserMarketplaceCards';
 import UsersCRUD from '@/custom-pages/admin/UsersCRUD';
+import AdminEnquiries from '@/custom-pages/admin/AdminEnquiries';
 import BankingInfo from '@/custom-pages/banking-info/BankingInfo';
 
 interface ProductLayoutProps {
@@ -30,10 +32,15 @@ export default function WytSaaSPortalLayout({ onSelectProduct: _onSelectProduct 
   const [activeMenu, setActiveMenu] = useState(() => {
     if (user?.role === 'developer') return 'brand';
     if (user?.role === 'wytsaas_admin') return 'admin-brands';
-    if (user?.role === 'user') return 'user-watchlist';
+    if (user?.role === 'user') return 'user-marketplace';
     return 'products';
   });
-  const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
+  const [isSidebarMinimized, setIsSidebarMinimized] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
 
   const handleUpdateSuccess = (newEmail: string, newName: string) => {
     if (user) {
@@ -53,7 +60,7 @@ export default function WytSaaSPortalLayout({ onSelectProduct: _onSelectProduct 
     } else if (newRole === 'wytsaas_admin') {
       setActiveMenu('admin-brands');
     } else if (newRole === 'user') {
-      setActiveMenu('user-watchlist');
+      setActiveMenu('user-marketplace');
     }
   };
 
@@ -87,12 +94,32 @@ export default function WytSaaSPortalLayout({ onSelectProduct: _onSelectProduct 
             />
           )}
 
+          {/* Mobile Sidebar Overlay Backdrop */}
+          {!isSidebarMinimized && (
+            <Box
+              onClick={() => setIsSidebarMinimized(true)}
+              sx={{
+                display: { xs: 'block', md: 'none' },
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                backgroundColor: 'rgba(15, 23, 42, 0.3)',
+                backdropFilter: 'blur(4px)',
+                zIndex: 1100,
+                transition: 'opacity 0.3s ease',
+              }}
+            />
+          )}
+
           <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, overflow: 'hidden', height: '100%' }}>
             <Topbar
               user={user}
               onLogout={handleLogout}
               onLoginClick={() => { }}
               onMyAccountClick={() => setActiveMenu('my-account')}
+              onToggleSidebar={() => setIsSidebarMinimized(!isSidebarMinimized)}
             />
 
             <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
@@ -102,6 +129,8 @@ export default function WytSaaSPortalLayout({ onSelectProduct: _onSelectProduct 
                 <WatchlistCRUD user={user} />
               ) : activeMenu === 'user-watchlist' ? (
                 <UserWatchlistCards user={user} />
+              ) : activeMenu === 'user-marketplace' ? (
+                <UserMarketplaceCards user={user} />
               ) : activeMenu === 'admin-brands' ? (
                 <AdminBrands user={user} portalType="wytsaas" />
               ) : activeMenu === 'wytpass-approvals' ? (
@@ -112,6 +141,8 @@ export default function WytSaaSPortalLayout({ onSelectProduct: _onSelectProduct 
                 <MarketplaceBanners user={user} />
               ) : activeMenu === 'users' ? (
                 <UsersCRUD user={user} />
+              ) : activeMenu === 'admin-enquiries' ? (
+                <AdminEnquiries user={user} />
               ) : activeMenu === 'banking-info' ? (
                 <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 4, py: 3, userSelect: 'none' }}>
                   <BankingInfo user={user} />

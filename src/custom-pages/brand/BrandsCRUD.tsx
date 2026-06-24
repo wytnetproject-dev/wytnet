@@ -29,18 +29,21 @@ import {
   Settings,
   Lock,
   CheckCircle2,
-  Trophy
+  Trophy,
+  History
 } from 'lucide-react';
 import type {
   Brand,
   BrandCreateInput,
-  BrandUpdateInput
+  BrandUpdateInput,
+  BrandWhitePassReviewLog
 } from '@/api/wytsaas/brand';
 import {
   fetchBrands,
   updateBrand,
   createBrand,
-  deleteBrand
+  deleteBrand,
+  fetchWhitePassReviewLogs
 } from '@/api/wytsaas/brand';
 import { createSubscriptionPlan } from '@/api/wytsaas/subscription';
 
@@ -90,6 +93,11 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastSeverity, setToastSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
+
+  // Update logs modal state
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
+  const [logs, setLogs] = useState<BrandWhitePassReviewLog[]>([]);
+  const [isLogsLoading, setIsLogsLoading] = useState(false);
 
   // Load JWT Auth token
   const getAuthToken = () => {
@@ -205,6 +213,26 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
       }
     }
     setIsLoading(false);
+  };
+
+  const handleOpenLogs = async () => {
+    if (!selectedDetailBrand) return;
+    setIsLogsOpen(true);
+    setIsLogsLoading(true);
+    try {
+      const token = getAuthToken();
+      const ssoLogs = await fetchWhitePassReviewLogs(selectedDetailBrand.id, token);
+      const sortedLogs = [...ssoLogs].sort((a, b) => {
+        const timeA = new Date(a.created_at || a.reviewed_at || 0).getTime();
+        const timeB = new Date(b.created_at || b.reviewed_at || 0).getTime();
+        return timeB - timeA;
+      });
+      setLogs(sortedLogs);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to fetch review logs.', 'error');
+    } finally {
+      setIsLogsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -424,48 +452,70 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
     return (
       <Box className="flex-grow overflow-y-auto no-scrollbar h-full flex flex-col relative px-8 py-6 select-none space-y-6">
         {/* Header with Back button and brand info */}
-        <div className="flex items-center gap-4 shrink-0">
-          <Button
-            variant="outlined"
-            onClick={() => setViewMode('list')}
-            sx={{
-              borderColor: '#e2e8f0',
-              color: '#475569',
-              borderRadius: '12px',
-              textTransform: 'none',
-              fontWeight: 'bold',
-              bgcolor: 'white',
-              minWidth: 'auto',
+        <div className="flex items-center justify-between gap-4 shrink-0">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outlined"
+              onClick={() => setViewMode('list')}
+              sx={{
+                borderColor: '#e2e8f0',
+                color: '#475569',
+                borderRadius: '12px',
+                textTransform: 'none',
+                fontWeight: 'bold',
+                bgcolor: 'white',
+                minWidth: 'auto',
+                '&:hover': {
+                  borderColor: '#cbd5e1',
+                  bgcolor: '#f8fafc',
+                }
+              }}
+              startIcon={<ChevronLeft className="h-4 w-4" />}
+            />
 
-
-              '&:hover': {
-                borderColor: '#cbd5e1',
-                bgcolor: '#f8fafc',
-              }
-            }}
-            startIcon={<ChevronLeft className="h-4 w-4" />}
-          >
-
-          </Button>
-
-          <div className="flex items-center gap-3">
-            {selectedDetailBrand.logo_url ? (
-              <img
-                src={selectedDetailBrand.logo_url}
-                alt={`${selectedDetailBrand.name} logo`}
-                className="h-10 w-10 object-cover rounded-xl border border-slate-100 shadow-sm"
-              />
-            ) : (
-              <div className="h-10 w-10 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-sm" style={{ backgroundColor: primaryColor }}>
-                {selectedDetailBrand.name.charAt(0).toUpperCase()}
+            <div className="flex items-center gap-3">
+              {selectedDetailBrand.logo_url ? (
+                <img
+                  src={selectedDetailBrand.logo_url}
+                  alt={`${selectedDetailBrand.name} logo`}
+                  className="h-10 w-10 object-cover rounded-xl border border-slate-100 shadow-sm"
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-sm" style={{ backgroundColor: primaryColor }}>
+                  {selectedDetailBrand.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <h2 className="text-xl font-extrabold text-wytnet-dark flex items-center gap-2 leading-none">
+                  {selectedDetailBrand.name}
+                </h2>
+                <span className="text-[10px] font-mono text-slate-400 mt-1 block">/{selectedDetailBrand.slug}</span>
               </div>
-            )}
-            <div>
-              <h2 className="text-xl font-extrabold text-wytnet-dark flex items-center gap-2 leading-none">
-                {selectedDetailBrand.name}
-              </h2>
-              <span className="text-[10px] font-mono text-slate-400 mt-1 block">/{selectedDetailBrand.slug}</span>
             </div>
+          </div>
+
+          <div>
+            <Button
+              variant="outlined"
+              onClick={handleOpenLogs}
+              sx={{
+                borderColor: '#cbd5e1',
+                color: '#475569',
+                borderRadius: '12px',
+                textTransform: 'none',
+                fontWeight: 'bold',
+                bgcolor: 'white',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                '&:hover': {
+                  borderColor: '#cbd5e1',
+                  bgcolor: '#f8fafc',
+                  color: '#1e293b'
+                }
+              }}
+              startIcon={<History className="h-4 w-4 text-slate-500" />}
+            >
+              Updates
+            </Button>
           </div>
         </div>
 
@@ -841,6 +891,153 @@ export default function BrandsCRUD({ user, portalType }: BrandsCRUDProps) {
             </div>
           )}
         </div>
+
+        {/* UPDATE LOGS TIMELINE DIALOG */}
+        <Dialog
+          open={isLogsOpen}
+          onClose={() => setIsLogsOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          slotProps={{
+            paper: {
+              sx: {
+                borderRadius: '24px',
+                p: 1.5,
+                maxHeight: '85vh',
+                boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)'
+              }
+            }
+          }}
+        >
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1 }}>
+            <div className="p-2 bg-slate-50 border border-slate-100 rounded-xl">
+              <History className="h-5 w-5 text-slate-600" />
+            </div>
+            <div>
+              <Typography sx={{ fontWeight: 'black', color: '#1e293b', fontSize: '16px' }}>
+                Update Logs & History
+              </Typography>
+              <Typography className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+                {selectedDetailBrand?.name} &bull; Onboarding Verification Audit Trail
+              </Typography>
+            </div>
+          </DialogTitle>
+
+          <DialogContent sx={{ pt: 2, pb: 2, overflowY: 'auto' }}>
+            {isLogsLoading ? (
+              <Box className="flex flex-col items-center justify-center py-12 space-y-3">
+                <RefreshCw className="h-8 w-8 text-wytnet-blue animate-spin" />
+                <Typography sx={{ fontSize: '12px', fontWeight: 'bold', color: 'text.secondary' }}>
+                  Fetching update logs...
+                </Typography>
+              </Box>
+            ) : logs.length === 0 ? (
+              <Box className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+                <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                  <History className="h-8 w-8 text-slate-300" />
+                </div>
+                <div>
+                  <Typography sx={{ fontWeight: 'bold', color: '#475569', fontSize: '13px' }}>
+                    No Updates Found
+                  </Typography>
+                  <Typography sx={{ color: '#94a3b8', fontSize: '11px', mt: 0.5 }}>
+                    No verification update logs have been recorded for this application.
+                  </Typography>
+                </div>
+              </Box>
+            ) : (
+              <div className="relative border-l border-slate-200 ml-4 pl-6 space-y-6 py-2">
+                {logs.map((log, index) => {
+                  const isStatusApproved = log.integration_status === 'approved';
+                  const isStatusRejected = log.integration_status === 'rejected';
+
+                  const statusColor = isStatusApproved 
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-100' 
+                    : isStatusRejected 
+                      ? 'text-rose-700 bg-rose-50 border-rose-100' 
+                      : 'text-amber-700 bg-amber-50 border-amber-100';
+
+                  const nodeColorClass = isStatusApproved 
+                    ? 'bg-emerald-500 ring-emerald-50' 
+                    : isStatusRejected 
+                      ? 'bg-rose-500 ring-rose-50' 
+                      : 'bg-amber-500 ring-amber-50';
+
+                  return (
+                    <div key={log.id || index} className="relative group">
+                      {/* Timeline Node Point */}
+                      <span className={`absolute -left-[35px] top-1.5 flex items-center justify-center w-[18px] h-[18px] rounded-full border-4 border-white ring-4 ${nodeColorClass}`} />
+
+                      <div className="bg-slate-50/50 border border-slate-100 hover:border-slate-200/80 rounded-2xl p-4 transition-all duration-200 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase leading-none text-blue-700 bg-blue-50 border border-blue-100">
+                              SSO Review
+                            </span>
+                            <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border uppercase tracking-wide leading-none ${statusColor}`}>
+                              {log.integration_status}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-400">
+                            {new Date(log.created_at || log.reviewed_at || '').toLocaleString()}
+                          </span>
+                        </div>
+
+                        {/* Technical specifications checked */}
+                        <div className="grid grid-cols-3 gap-2 bg-white/80 border border-slate-100/50 p-2.5 rounded-xl text-[10px] font-bold text-slate-600">
+                          <div className="flex items-center gap-1 justify-center">
+                            <CheckCircle2 className={`h-3.5 w-3.5 shrink-0 ${log.sdk_installed ? 'text-emerald-500' : 'text-slate-300'}`} />
+                            <span className={log.sdk_installed ? 'text-slate-700' : 'text-slate-400'}>SDK</span>
+                          </div>
+                          <div className="flex items-center gap-1 justify-center">
+                            <CheckCircle2 className={`h-3.5 w-3.5 shrink-0 ${log.callback_verified ? 'text-emerald-500' : 'text-slate-300'}`} />
+                            <span className={log.callback_verified ? 'text-slate-700' : 'text-slate-400'}>Callback</span>
+                          </div>
+                          <div className="flex items-center gap-1 justify-center">
+                            <CheckCircle2 className={`h-3.5 w-3.5 shrink-0 ${log.domain_verified ? 'text-emerald-500' : 'text-slate-300'}`} />
+                            <span className={log.domain_verified ? 'text-slate-700' : 'text-slate-400'}>Domain</span>
+                          </div>
+                        </div>
+
+                        {/* Review Notes / Details */}
+                        {log.review_notes && (
+                          <div className={`p-3 rounded-xl border text-xs font-semibold leading-relaxed ${isStatusRejected ? 'bg-rose-50/30 border-rose-100/50 text-rose-800' : 'bg-slate-100/30 border-slate-200/50 text-slate-700'}`}>
+                            <div className="text-[9px] font-extrabold text-slate-400 uppercase mb-1 tracking-wider">
+                              Auditor Comments
+                            </div>
+                            {log.review_notes}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </DialogContent>
+
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button
+              onClick={() => setIsLogsOpen(false)}
+              variant="contained"
+              sx={{
+                bgcolor: '#1e293b',
+                color: 'white',
+                textTransform: 'none',
+                fontWeight: 'bold',
+                borderRadius: '10px',
+                px: 3,
+                boxShadow: 'none',
+                '&:hover': {
+                  bgcolor: '#0f172a',
+                  boxShadow: 'none'
+                }
+              }}
+            >
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     );
   }
